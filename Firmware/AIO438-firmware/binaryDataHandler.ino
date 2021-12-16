@@ -1,3 +1,5 @@
+//This file is mostly broken now, todo: fix
+
 void binaryDataHandler() { //Once data is received, it will be handled in the following order
   decodeincomingData();
   checkData();

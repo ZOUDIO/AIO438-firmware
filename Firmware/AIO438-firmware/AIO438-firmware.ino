@@ -79,7 +79,7 @@ bool eqEnableOld;
 bool eqState;
 bool eqStateOld;
 bool systemEnable;
-float vol;
+float vol = -30; //Todo: remove hardcoding
 float volOld;
 float volReduction;
 float powerVoltage;
@@ -95,15 +95,18 @@ Rotary ROT = Rotary(ROT_A, ROT_B);    //Encoder
 CRC32 crc_32;                         //Used in blob validation
 
 void setup() {
+  pinMode(EXPANSION_EN, OUTPUT); //Todo: determine state and behaviour
   pinMode(VREG_SLEEP, OUTPUT);
   pinMode(BT_ENABLE, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
   pinMode(AMP1_PDN, OUTPUT);
   pinMode(AMP2_PDN, OUTPUT);
   pinMode(LED_RED, OUTPUT);
-  pinMode(BT_PIO0, OUTPUT);
-  pinMode(BT_PIO1, OUTPUT);
-  pinMode(BT_PIO8, OUTPUT);
+  pinMode(BT_PIO19, OUTPUT);
+  pinMode(BT_PIO20, OUTPUT);
+  pinMode(BT_PIO21, OUTPUT);
+  pinMode(BT_PIO22, OUTPUT);
+  //Remainder of GPIO are default pinmode (input)
   pinMode(0, INPUT_PULLUP); //Pull up the RX pin to avoid accidental interrupts
   Serial.begin(38400);
   Wire.begin();
@@ -119,11 +122,6 @@ void setup() {
   crc_32.setReverseOut(true);
 
   //  static_assert(sizeof(variables) < EEPROM_SIZE, "Struct too large for EEPROM");
-  //  static_assert(offsetof(variables, factory) == 128, "Lay-out changed");
-  //  static_assert(offsetof(variables, user) == 192, "Lay-out changed");
-  //  static_assert(offsetof(variables, blobInfo0) == 256, "Lay-out changed");
-  //  static_assert(offsetof(variables, blobs0) == 2112, "Lay-out changed");
-  //  static_assert(offsetof(variables, blobs0) % PAGE_SIZE == 0, "Inefficient blob offset");
 }
 
 void exitPowerdown() {
@@ -136,7 +134,7 @@ void loop() {
   enableSystem();
   while (systemEnable) {
     serialMonitor();
-    if (false) { //todo: Check valid state
+    if (true) { //todo: Check valid state
       temperatureMonitor();
       analogGainMonitor();
       rotaryMonitor();
@@ -164,7 +162,7 @@ void enableSystem() { //Enable or disable system
 
   //Check eeprom validity
 
-  if (false) { //Check validation state
+  if (true) { //Todo: Check validation state
     writeRegister(AMP2, 0x6A, B1011);       //Set ramp clock phase of AMP2 to 90 degrees (see 7.4.3.3.1 in datasheet)
     delay(750);                             //Wait for I2S to start
 
@@ -182,7 +180,9 @@ void enableSystem() { //Enable or disable system
 
     //Play startup tone
 
-    //Set output states
+    //Set output states based on eeprom todo
+    writeRegister(AMP1, 0x03, B11);
+    writeRegister(AMP2, 0x03, B11);
   }
 
   while (Serial.available() > 0) {        //Clear serial input buffer

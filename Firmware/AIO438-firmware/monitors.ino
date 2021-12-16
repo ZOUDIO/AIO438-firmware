@@ -75,16 +75,16 @@ void rotaryMonitor() {  //Check if the rotary encoder has been turned or pressed
     systemEnable = false;
   } else if (ROT_button.clicks == 2) {      //Short double press: next track
     Serial.println(F("Next track"));
-    sendPulse(BT_PIO0, 600);
+    //Implement
   } else if (ROT_button.clicks == 3) {      //Short triple press: previous track
     Serial.println(F("Previous track"));
-    sendPulse(BT_PIO0, 100);
+    //Implement
   } else if (ROT_button.clicks == -1) {     //Long press: enter pairing
     Serial.println(F("Enter pairing"));
-    sendPulse(BT_PIO0, 1100);
+    //Implement
   } else if (ROT_button.clicks == -2) {     //Double press and hold: reset pairing list
     Serial.println(F("Reset pairing list"));
-    sendPulse(BT_PIO0, 1600);
+    //Implement
   }
 }
 
@@ -137,9 +137,9 @@ void eqMonitor() { //Check EQ button
   }
 
   if (eqEnable != eqEnableOld) {
-    //Do something
+    //Todo: implement
     Serial.println(F("EQ not available")); //Todo: enable
-    //i2cCommandLoader(false); //Reload eeprom data (non-verbose)
+    
     setLed("OFF", 500);            //Blink LED to notify user if EQ is on (green) or off (red)
     if (eqEnable) {
       setLed("GREEN", 500);

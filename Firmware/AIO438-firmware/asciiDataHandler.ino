@@ -66,6 +66,8 @@ void getStatus() {
   writeRegisterDual(0x78, 0x80);      //Clear all faults
   Serial.print(F("powerVoltage = "));
   Serial.println(powerVoltage);
+  Serial.print(F("Volume = "));
+  Serial.println(vol);
   getStatusAmp(AMP1);
   getStatusAmp(AMP2);
   //Load eeprom
