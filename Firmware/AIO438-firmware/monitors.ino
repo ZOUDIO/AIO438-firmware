@@ -102,10 +102,10 @@ void powerMonitor() { //Check system voltage. Update system state, status LED an
     }
   } else if (powerVoltage < user.powerLow) {
     shutdownTime = 0;
-    setLed("RED", 0);
+    setLed("RED");
   } else {
     shutdownTime = 0;
-    setLed("GREEN", 0);
+    setLed("GREEN");
   }
 }
 

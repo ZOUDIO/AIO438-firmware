@@ -1,3 +1,7 @@
+#define member_size(type, member) sizeof(((type *)0)->member)                                               //Get struct member size in bytes
+#define eepromPut(member) writeStructToEeprom(offsetof(variables, member), member_size(variables, member))  //Save struct member on eeprom
+#define eepromGet(member) readEeprom(offsetof(variables, member), member_size(variables, member))           //Get struct member from eeprom
+
 void readEeprom(int reg, int amount) {   //Read bytes from eeprom
   Wire.beginTransmission(EEPROM_EXT);
   Wire.write(reg >> 8);   // MSB
@@ -9,17 +13,11 @@ void readEeprom(int reg, int amount) {   //Read bytes from eeprom
   }
 }
 
-void writeStructToEeprom(int memberOffset, int memberSize) {
+void writeStructToEeprom(int memberOffset, int memberSize) { //Todo: some kind of checking?
 
-  if (currentlyReceiving) {               //If data is received via serial
-    if (memberSize != actualDataCount) {  //If member size is not the same as the received data size
-      faultCode = INVALID_SIZE;
-      return;
-    }
-    memcpy(eepromBuffer.asBytes, incomingData._byte + 2, actualDataCount); //Put data in buffer so it can be sent to eeprom
-  }
+  memcpy(eepromBuffer.asBytes, incomingData._byte + 2, actualDataCount); //Put data in buffer so it can be sent to eeprom
   
-  //If data crosses page boundary, it needs to be written in two parts to avoid roll-over
+  //If data crosses page boundary, it needs to be written in two parts to avoid roll-over, todo put in eeprom function
   byte amountAvailable = PAGE_SIZE - (memberOffset % PAGE_SIZE);  //How much can be written on the current page
   byte amountCurrentPage = min(memberSize, amountAvailable);      //Only write what fits on the current page
 

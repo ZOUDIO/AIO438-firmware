@@ -6,7 +6,7 @@ void binaryDataHandler() { //Once data is received, it will be handled in the fo
   prepareOutgoingData();
   encodeOutgoingData();
   sendData();
-  executeEeprom();
+  applySettings();
 }
 
 void decodeincomingData() {
@@ -72,7 +72,9 @@ void sendData() {
   Serial.write(endMarker);
 }
 
-void executeEeprom() {
-  //Check if new settings need to be loaded
-  Serial.println(F("New settings applied"));
+void applySettings() {
+  if(loadEeprom) {
+    Serial.println(F("New settings applied"));
+    loadEeprom = false;
+  } 
 }

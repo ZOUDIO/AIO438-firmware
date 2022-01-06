@@ -22,12 +22,12 @@ void asciiDataHandler() {
     sendPulse(PIO, duration);
   } else if (!strcmp(command, "STATUS")) {
     getStatus();
-  } else if (!strcmp(command, "EEPROM")) {
+  } else if (!strcmp(command, "DUMP")) {
     command = strtok (NULL, " ");
-    if (!strcmp(command, "DUMP")) {
-      eepromDump();
-    } else if (!strcmp(command, "CLEAR")) {
-      eepromClear();
+    if (!strcmp(command, "EEPROM")) {
+      dumpEeprom();
+    } else if (!strcmp(command, "DSP")) {
+      dumpDsp();
     }
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
@@ -35,30 +35,12 @@ void asciiDataHandler() {
   }
 }
 
-void eepromDump() {
-  Serial.println("Start dumping first 5000 bytes of eeprom...");
-  for (long i = 0; i < 5000; i += 0x10) { //Go per 16 bytes (hex)
-    readEeprom(i, 0x10); //Read 16 bytes
-    for (int j = 0; j < 0x10; j++) {
-      if (eepromBuffer.asBytes[j] < 0x10) {
-        Serial.print("0"); //Pre-fix 0 for formatting
-      }
-      Serial.print(eepromBuffer.asBytes[j], HEX);
-      Serial.print(" ");
-    }
-    Serial.println();
-  }
-  Serial.println("Finished dumping");
+void dumpEeprom() {
+  //Todo?
 }
 
-void eepromClear() {
-  Serial.println("Start clearing...");
-  for (long i = 0; i < EEPROM_SIZE; i += PAGE_SIZE) {
-    byte allZeroes[64];
-    memset(allZeroes, 0, 64);
-    writeEeprom(i, PAGE_SIZE, allZeroes);
-  }
-  Serial.println("Finished clearing");
+void dumpDsp() {
+  //Todo?
 }
 
 

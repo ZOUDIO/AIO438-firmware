@@ -9,28 +9,23 @@
   Board has onboard CP2102N for communication and firmware uploads via UART
 */
 
+//Todo: include libs in src/ and use submodules
 #include "src/ArduinoLibraryWire/Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
 #include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
 #include "Rotary.h"           //Rotary encoder library from https://github.com/brianlow/Rotary
 #include "CRC.h"              //Cyclic-Redundancy-Check library from https://github.com/RobTillaart/CRC        
-#include "CRC32.h"            //Extends CRC.h
 #include "LowPower.h"         //Low power library from https://github.com/canique/Low-Power-Canique/
 #include "power2.h"           //Extends LowPower.h
 #include "avr/wdt.h"          //Watchdog timer library
 #include "hardware.h"         //Hardware determined constants
 #include "eepromLayout.h"     //Struct definitions for eeprom storage
 
-#define member_size(type, member) sizeof(((type *)0)->member)                                                                 //Get struct member size in bytes
-#define eepromPut(member) writeStructToEeprom(offsetof(variables, member), member_size(variables, member))  //Save struct member on eeprom
-#define eepromGet(member) readEeprom(offsetof(variables, member), member_size(variables, member))           //Get struct member from eeprom
-
 const char MODEL[] = "AIO438";
-const char FIRMWARE[] = "0.1.0";
+const char FIRMWARE[] = "0.2.0";
 
-const bool _verbose = true; //Can be passed to functions
-const bool _non_verbose = false; //Can be passed to functions
-const byte arraySize = 67;  //64 bytes plus group ID, command ID and CRC8
+const bool verbose = true; //Can be passed to functions
+const byte arraySize = 67;  //64 bytes plus group ID, command ID and CRC8 todo: modify
 
 //Serial encoding constants
 const byte specialMarker = 253; //Value 253, 254 and 255 can be sent as 253 0, 253 1 and 253 2 respectively
@@ -65,8 +60,8 @@ union {
   char _char[arraySize]; //Get as char array
 } incomingData;
 
-byte tempBuffer[2 * arraySize];     //Worst case scenario every value is 253 or higher, which needs two bytes to recreate
-byte outgoingData[arraySize];       //Data before encoding
+byte tempBuffer[2 * arraySize];   //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
+byte outgoingData[arraySize];     //Data before encoding
 
 byte incomingDataCount;
 byte outgoingDataCount;
@@ -79,7 +74,8 @@ bool eqEnableOld;
 bool eqState;
 bool eqStateOld;
 bool systemEnable;
-float vol = -30; //Todo: remove hardcoding
+bool loadEeprom;
+float vol;
 float volOld;
 float volReduction;
 float powerVoltage;
@@ -92,7 +88,6 @@ userData user;
 ClickButton ROT_button(ROT_SW, HIGH); //Encoder switch
 ClickButton TWS_button(TWS_SW, HIGH); //TrueWirelessStereo button
 Rotary ROT = Rotary(ROT_A, ROT_B);    //Encoder
-CRC32 crc_32;                         //Used in blob validation
 
 void setup() {
   pinMode(EXPANSION_EN, OUTPUT); //Todo: determine state and behaviour
@@ -115,13 +110,9 @@ void setup() {
   attachPinChangeInterrupt(0, exitPowerdown, CHANGE);       //Wake up from serial
   attachPinChangeInterrupt(ROT_SW, exitPowerdown, CHANGE);  //Wake up from rotary switch
 
-  //CRC32 settings match the defaults of java.util.zip.CRC32 used in the configtool
-  crc_32.setStartXOR(0xFFFFFFFF);
-  crc_32.setEndXOR(0xFFFFFFFF);
-  crc_32.setReverseIn(true);
-  crc_32.setReverseOut(true);
+  //Todo: set CRC16-CCITT
 
-  //  static_assert(sizeof(variables) < EEPROM_SIZE, "Struct too large for EEPROM");
+  //Todo: static_asserts
 }
 
 void exitPowerdown() {
@@ -134,11 +125,11 @@ void loop() {
   enableSystem();
   while (systemEnable) {
     serialMonitor();
+    powerMonitor();
     if (true) { //todo: Check valid state
       temperatureMonitor();
       analogGainMonitor();
       rotaryMonitor();
-      powerMonitor();
       twsMonitor();
       eqMonitor();
     }
@@ -155,12 +146,13 @@ void enableSystem() { //Enable or disable system
   digitalWrite(AMP2_PDN, HIGH);           //Enable amplifier 1
   delay(10);                              //Wait for amplifiers to boot
 
+  vol = -30;                                    //Default: -30dB
   volOld = 0;                                   //Default: 0dB todo: force?
   analogGain = analogGainOld = 0;               //Default: 0dB
   eqState = eqStateOld = digitalRead(EQ_SW);    //Enable if EQ switch is closed todo verify
   eqEnable = eqEnableOld = digitalRead(EQ_SW);  //Enable if EQ switch is closed
 
-  //Check eeprom validity
+  //Load eeprom, check validity
 
   if (true) { //Todo: Check validation state
     writeRegister(AMP2, 0x6A, B1011);       //Set ramp clock phase of AMP2 to 90 degrees (see 7.4.3.3.1 in datasheet)
@@ -174,7 +166,7 @@ void enableSystem() { //Enable or disable system
     writeRegisterDual(0x53, B1100000);      //Set Class D bandwith to 175Khz
     writeRegisterDual(0x51, B1110111);      //Set automute time to 10.66 seconds
 
-    //Restore non-volatile volume if enabled
+    //Set vol if enabled
     setVol();                               //Set actual volume
     analogGainMonitor();                    //Set analog gain
 
@@ -193,8 +185,7 @@ void enableSystem() { //Enable or disable system
 }
 
 void disableSystem() {
-  //Save non-volatile volume
-  setLed("OFF", 0);
+  setLed("OFF");
   Serial.println(F("Off"));
   Serial.flush();
   digitalWrite(BT_ENABLE, LOW);
@@ -216,7 +207,12 @@ void sendPulse(byte PIO, int duration) { //Send a pulse to a BT PIO to 'press' i
   digitalWrite(PIO, LOW);
 }
 
-void setLed(String color, int _delay) { //Set led color
+void setLed(String color, int _delay) {
+  setLed(color);
+  delay(_delay);
+}
+
+void setLed(String color) { //Set led color
   if (color == "RED") {
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, LOW);
@@ -226,10 +222,6 @@ void setLed(String color, int _delay) { //Set led color
   } else { //Off
     digitalWrite(LED_GREEN, LOW);
     digitalWrite(LED_RED, LOW);
-  }
-
-  if (_delay) {
-    delay(_delay);
   }
 }
 
