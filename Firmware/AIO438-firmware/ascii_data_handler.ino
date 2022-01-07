@@ -1,14 +1,14 @@
-void asciiDataHandler() {
-  char *command = strtok (incomingData._char, " ");     //Commands are space-delimited
+void ascii_data_handler() {
+  char *command = strtok (incoming_data._char, " ");     //Commands are space-delimited
 
   if (!strcmp(command, "MODEL")) {
-    Serial.println(MODEL);
+    Serial.println(model);
   } else if (!strcmp(command, "FIRMWARE")) {
-    Serial.println(FIRMWARE);
+    Serial.println(firmware);
   } else if (!strcmp(command, "ECHO")) {
     Serial.println(F("ECHO"));
   } else if (!strcmp(command, "DISABLE")) {
-    systemEnable = false;
+    system_enabled = false;
   } else if (!strcmp(command, "VOL")) {
     command = strtok (NULL, " ");
     if (command != NULL) {  //If there is a command: set volume
@@ -19,15 +19,15 @@ void asciiDataHandler() {
   } else if (!strcmp(command, "PULSE")) {
     byte PIO = strtol(strtok (NULL, " "), NULL, 0);
     int duration = strtol(strtok (NULL, " "), NULL, 0);
-    sendPulse(PIO, duration);
+    send_pulse(PIO, duration);
   } else if (!strcmp(command, "STATUS")) {
-    getStatus();
+    get_status();
   } else if (!strcmp(command, "DUMP")) {
     command = strtok (NULL, " ");
     if (!strcmp(command, "EEPROM")) {
-      dumpEeprom();
+      dump_eeprom();
     } else if (!strcmp(command, "DSP")) {
-      dumpDsp();
+      dump_dsp();
     }
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
@@ -35,31 +35,31 @@ void asciiDataHandler() {
   }
 }
 
-void dumpEeprom() {
+void dump_eeprom() {
   //Todo?
 }
 
-void dumpDsp() {
+void dump_dsp() {
   //Todo?
 }
 
 
-void getStatus() {
-  writeRegisterDual(0x78, 0x80);      //Clear all faults
-  Serial.print(F("powerVoltage = "));
-  Serial.println(powerVoltage);
+void get_status() {
+  write_register_dual(0x78, 0x80);      //Clear all faults
+  Serial.print(F("Power voltage = "));
+  Serial.println(power_voltage);
   Serial.print(F("Volume = "));
   Serial.println(vol);
-  getStatusAmp(AMP1);
-  getStatusAmp(AMP2);
+  get_status_amp(amp_1);
+  get_status_amp(amp_2);
   //Load eeprom
 }
 
-void getStatusAmp(int amp) {
-  if (amp == AMP1) Serial.println(F("Status AMP1:"));
-  if (amp == AMP2) Serial.println(F("Status AMP2:"));
+void get_status_amp(int amp) {
+  if (amp == amp_1) Serial.println(F("Status amp_1:"));
+  if (amp == amp_2) Serial.println(F("Status amp_2:"));
 
-  byte reg39h = readRegister(amp, 0x39);
+  byte reg39h = read_register(amp, 0x39);
   if (bitRead(reg39h, 0)) Serial.println(F("Invalid sampling rate"));
   if (bitRead(reg39h, 1)) Serial.println(F("Invalid SCLK"));
   if (bitRead(reg39h, 2)) Serial.println(F("Missing SCLK"));
@@ -67,29 +67,29 @@ void getStatusAmp(int amp) {
   if (bitRead(reg39h, 4)) Serial.println(F("Invalid PLL rate"));
   if (bitRead(reg39h, 5)) Serial.println(F("Invalid SCLK rate"));
 
-  byte reg68h = readRegister(amp, 0x68);
+  byte reg68h = read_register(amp, 0x68);
   if (reg68h == 0) Serial.println(F("State: deep sleep"));
   else if (reg68h == 1) Serial.println(F("State: sleep"));
   else if (reg68h == 2) Serial.println(F("State: high impedance"));
   else if (reg68h == 3) Serial.println(F("State: play"));
 
-  byte reg70h = readRegister(amp, 0x70);
+  byte reg70h = read_register(amp, 0x70);
   if (bitRead(reg70h, 0)) Serial.println(F("Overcurrent: right channel"));
   if (bitRead(reg70h, 1)) Serial.println(F("Overcurrent: left channel"));
   if (bitRead(reg70h, 2)) Serial.println(F("DC fault: right channel"));
   if (bitRead(reg70h, 3)) Serial.println(F("DC fault: left channel"));
 
-  byte reg71h = readRegister(amp, 0x71);
+  byte reg71h = read_register(amp, 0x71);
   if (bitRead(reg71h, 0)) Serial.println(F("PSU under voltage"));
   if (bitRead(reg71h, 1)) Serial.println(F("PSU over voltage"));
   if (bitRead(reg71h, 2)) Serial.println(F("Clock fault"));
 
-  byte reg72h = readRegister(amp, 0x72);
+  byte reg72h = read_register(amp, 0x72);
   if (bitRead(reg72h, 0)) Serial.println(F("High temperature: shutdown"));
   if (bitRead(reg72h, 1)) Serial.println(F("CBC fault: left channel"));
   if (bitRead(reg72h, 2)) Serial.println(F("CBC fault: right channel"));
 
-  byte reg73h = readRegister(amp, 0x73); //First 4 bits get checked every second by temperatureMonitor()
+  byte reg73h = read_register(amp, 0x73); //First 4 bits get checked every second by temperature_monitor()
   if (bitRead(reg73h, 4)) Serial.println(F("CBC overcurrent: right channel"));
   if (bitRead(reg73h, 5)) Serial.println(F("CBC overcurrent: left channel"));
 }

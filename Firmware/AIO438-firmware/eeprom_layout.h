@@ -1,4 +1,4 @@
-enum class entryType { //Determines how the entry data is handled
+enum class entry_type { //Determines how the entry data is handled
   system_variables, 
   dsp_default,  //Always used
   dsp_eq_off,   //Only used when EQ is disabled
@@ -6,42 +6,42 @@ enum class entryType { //Determines how the entry data is handled
   empty = 255,  //255 is the default value of an eeprom byte
 };
 
-struct entryStruct {
-  entryType type;
+struct entry_struct {
+  entry_type type;
   uint16_t location;
   uint16_t size; 
   uint16_t crc;
   uint8_t amp; //0 = all amps
 };
 
-struct allocationTable {
-  entryStruct entry[32];
+struct allocation_table {
+  entry_struct entry[32];
 };
 
 struct system_variables {
-  uint8_t volSaveEnable;
-  float volSave;        //Non-volatile place to remember volume level between power cycles
-  float volStart;
-  float volMax;
-  float powerLow;
-  float powerShutdown;
+  uint8_t vol_save_enable;
+  float vol_save;        //Non-volatile place to remember volume level between power cycles
+  float vol_start;
+  float vol_max;
+  float power_low;
+  float power_shutdown;
 };
 
-struct versionStruct{
+struct version_struct{
   byte major;
   byte minor;
   byte patch;
 };
 
-struct factoryData {
-  versionStruct hwVersion;
-  versionStruct btVersion;
+struct factory_data {
+  version_struct hw_version;
+  version_struct bt_version;
   uint8_t rfu[122];
 };
 
 struct eepromLayout {
-  factoryData factory;
-  allocationTable table;
+  factory_data factory;
+  allocation_table table;
   //Remainder of eeprom is reserved for data storage
 };
 

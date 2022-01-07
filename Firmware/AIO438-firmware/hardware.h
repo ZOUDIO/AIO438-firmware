@@ -1,30 +1,30 @@
 //Pinout
-#define BT_LED0       2   //PD2
-#define BT_ENABLE     3   //PD3
-#define AMP2_PDN      4   //PD4
-#define LED_GREEN     5   //PD5
-#define LED_RED       6   //PD6
-#define ROT_A         7   //PD7
-#define ROT_B         8   //PB0
-#define BT_PIO22      9   //PB1
-#define BT_PIO21      10  //PB2
-#define EQ_SW         11  //PB3
-#define ROT_SW        12  //PB4
-#define TWS_SW        13  //PB5
-#define AUX_SENSE     14  //PC0
-#define EXPANSION_EN  15  //PC1
-#define BT_LED1       16  //PC2
-#define VDD_SENSE     17  //PC3
-#define AMP1_PDN      23  //PE0
-#define VREG_SLEEP    24  //PE1
-#define BT_PIO20      25  //PE2
-#define BT_PIO19      26  //PE3
+#define bt_led_0      2   //PD2
+#define bt_enable     3   //PD3
+#define amp_2_pdn     4   //PD4
+#define led_green     5   //PD5
+#define led_red       6   //PD6
+#define rot_a         7   //PD7
+#define rot_b         8   //PB0
+#define bt_pio_22     9   //PB1
+#define bt_pio_21     10  //PB2
+#define eq_sw         11  //PB3
+#define rot_sw        12  //PB4
+#define tws_sw        13  //PB5
+#define aux_sense     14  //PC0
+#define expansion_en  15  //PC1
+#define bt_led_1      16  //PC2
+#define vdd_sense     17  //PC3
+#define amp_1_pdn     23  //PE0
+#define vreg_sleep    24  //PE1
+#define bt_pio_20     25  //PE2
+#define bt_pio_19     26  //PE3
 
 //I2C addresses
-#define AMP1          0x4D
-#define AMP2          0x4C
-#define EEPROM_EXT    0x50
+#define amp_1         0x4D
+#define amp_2         0x4C
+#define eeprom_ext    0x50
 
 //EEPROM properties
-#define EEPROM_SIZE   32768
-#define PAGE_SIZE     64
+#define eeprom_size   32768
+#define page_size     64
