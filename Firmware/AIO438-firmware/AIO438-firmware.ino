@@ -9,12 +9,15 @@
   Board has onboard CP2102N for communication and firmware uploads via UART
 */
 
+//todo: flash strings
 //Todo: include libs in src/ and use submodules
+//Todo: look at better file split
 #include "src/ArduinoLibraryWire/Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
 #include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
 #include "Rotary.h"           //Rotary encoder library from https://github.com/brianlow/Rotary
-#include "CRC.h"              //Cyclic-Redundancy-Check library from https://github.com/RobTillaart/CRC        
+#include "CRC.h"              //Cyclic-Redundancy-Check library from https://github.com/RobTillaart/CRC       
+#include "CRC16.h"            //Extends CRC.h 
 #include "LowPower.h"         //Low power library from https://github.com/canique/Low-Power-Canique/
 #include "power2.h"           //Extends LowPower.h
 #include "avr/wdt.h"          //Watchdog timer library
@@ -24,13 +27,11 @@
 const char model[] = "AIO438";
 const char firmware[] = "0.2.0";
 
-const bool verbose = true; //Can be passed to functions
-const byte array_size = 67;  //64 bytes plus group ID, command ID and CRC8 todo: revise
+const uint8_t hw_support_major = 1; //This firmware supports hardware version up until this major version number
+const uint8_t bt_fw_support_major = 1; //This firmware supports bluetooth version up until this major version number
 
-//Serial encoding constants
-const byte special_marker = 253; //Value 253, 254 and 255 can be sent as 253 0, 253 1 and 253 2 respectively
-const byte start_marker = 254;
-const byte end_marker = 255;
+const bool verbose = true; //Can be passed to functions
+const byte array_size = 69;  //1 function code, 2 address, 64 data and 2 CRC bytes
 
 //PurePathConsole constants
 const byte cfg_meta_burst = 253;
@@ -41,18 +42,13 @@ typedef struct { //Todo: look if needed
   uint8_t param;
 } cfg_reg;
 
-enum { //To give feedback to master todo: revise
-  ack,
-  invalid_crc,
-  invalid_size,
-  unknown_command,
-} fault_code;
-
 union { //Used for type conversion
   byte as_bytes[64];
   float as_float;
   system_variables as_user_data; //todo: rename?
   cfg_reg as_cfg_reg;
+  factory_data_struct as_factory_data;
+  entry_struct as_entry;
 } eeprom_buffer;
 
 union {
@@ -74,7 +70,7 @@ bool eq_enabled_old;
 bool eq_state;
 bool eq_state_old;
 bool system_enabled;
-bool load_eeprom;
+bool apply_settings_flag;
 float vol;
 float vol_old;
 float vol_reduction;
@@ -82,12 +78,15 @@ float power_voltage;
 char analog_gain;
 char analog_gain_old;
 
-//Structs with variables that can be saved on the eeprom
+//Structs that are used during runtime
 system_variables user;
+dsp_eq_struct dsp_eq;
+factory_data_struct factory_data;
 
 ClickButton rot_button(rot_sw, HIGH); //Encoder switch
 ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
 Rotary rot = Rotary(rot_a, rot_b);    //Encoder
+CRC16 crc;
 
 void setup() {
   pinMode(expansion_en, OUTPUT); //Todo: determine state and behaviour
@@ -111,6 +110,7 @@ void setup() {
   attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
 
   //Todo: set CRC16-CCITT
+  crc.setPolynome(0x1021); //todo: default?
 
   //Todo: static_asserts
 }
@@ -125,7 +125,7 @@ void loop() {
   enable_system();
   while (system_enabled) {
     serial_monitor();
-    power_monitor();
+    power_monitor(); //Todo; make sure this can actually run reliably
     if (true) { //todo: Check valid state
       temperature_monitor();
       analog_gain_monitor();
@@ -137,13 +137,13 @@ void loop() {
   }
 }
 
-void enable_system() { //Enable or disable system
+void enable_system() { //Enable or disable system todo: look at sequence
   while (digitalRead(rot_sw) == HIGH) {}; //Continue when rotary switch is released
   Serial.println("Booting...");
   digitalWrite(vreg_sleep, HIGH);         //Set buckconverter to normal operation
   digitalWrite(bt_enable, HIGH);          //Enable BT module
-  digitalWrite(amp_1_pdn, HIGH);           //Enable amplifier 1
-  digitalWrite(amp_2_pdn, HIGH);           //Enable amplifier 1
+  digitalWrite(amp_1_pdn, HIGH);          //Enable amplifier 1
+  digitalWrite(amp_2_pdn, HIGH);          //Enable amplifier 1
   delay(10);                              //Wait for amplifiers to boot
 
   vol = -30;                                    //Default: -30dB
@@ -151,12 +151,13 @@ void enable_system() { //Enable or disable system
   analog_gain = analog_gain_old = 0;               //Default: 0dB
   eq_state = eq_state_old = digitalRead(eq_sw);    //Enable if EQ switch is closed todo verify
   eq_enabled = eq_enabled_old = digitalRead(eq_sw);  //Enable if EQ switch is closed
+  //todo set more defaults
 
-  //Load eeprom, check validity
+  load_eeprom();
 
   if (true) { //Todo: Check validation state
     write_register(amp_2, 0x6A, B1011);       //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
-    delay(750);                             //Wait for I2S to start
+    delay(750);                               //Wait for I2S to start
 
     //Load eeprom
 
@@ -167,12 +168,12 @@ void enable_system() { //Enable or disable system
     write_register_dual(0x51, B1110111);      //Set automute time to 10.66 seconds
 
     //Set vol if enabled
-    set_vol();                               //Set actual volume
+    set_vol();                                //Set actual volume
     analog_gain_monitor();                    //Set analog gain
 
     //Play startup tone
 
-    //Set output states based on eeprom todo
+    //Check for enable yes or no within function
     write_register(amp_1, 0x03, B11);
     write_register(amp_2, 0x03, B11);
   }
@@ -200,16 +201,11 @@ void disable_system() {
   wdt_enable(WDTO_8S);                    //Enable 8 seconds watchdog timer todo enable
 }
 
-void send_pulse(byte PIO, int duration) { //Send a pulse to a BT PIO to 'press' it (see GPIO mapping for more info)
+void send_pulse(byte PIO, int duration) { //Send a pulse to a BT PIO to 'press' it (see GPIO mapping for more info) todo remove?
   digitalWrite(PIO, HIGH);
   duration = min(duration, 2000); //2000ms maximum duration to avoid hanging
   delay(duration);
   digitalWrite(PIO, LOW);
-}
-
-void set_led(String color, int _delay) {
-  set_led(color);
-  delay(_delay);
 }
 
 void set_led(String color) { //Set led color
@@ -225,13 +221,18 @@ void set_led(String color) { //Set led color
   }
 }
 
+void set_led(String color, int _delay) { //Set led color and wait
+  set_led(color);
+  delay(_delay);
+}
+
 void set_vol() {
   if (vol != vol_old) {
     vol = max(vol, -103.5);       //Set absolute minimum
-    vol = min(vol, user.vol_max);  //Set user-defined maximum
+    vol = min(vol, user.vol_max); //Set user-defined maximum
     vol = min(vol, 24);           //Set absolute maximum
-    byte vol_register = 48 - 2 * vol;   //Convert decibel to register value
-    write_register_dual(0x4C, vol_register);   //Write to amps
+    byte vol_register = 48 - 2 * vol;         //Convert decibel to register value
+    write_register_dual(0x4C, vol_register);  //Write to amps
     vol_old = vol;
   }
 }

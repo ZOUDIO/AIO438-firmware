@@ -1,8 +1,6 @@
-/* Legacy struct code
 #define member_size(type, member) sizeof(((type *)0)->member)                                               //Get struct member size in bytes
-#define eepromPut(member) writeStructToEeprom(offsetof(variables, member), member_size(variables, member))  //Save struct member on eeprom
-#define eepromGet(member) read_eeprom(offsetof(variables, member), member_size(variables, member))           //Get struct member from eeprom
-*/
+#define eeprom_put(member) write_eeprom_setup(offsetof(eeprom_layout, member), member_size(eeprom_layout, member), eeprom_buffer.as_bytes)  //Save struct member on eeprom
+#define eeprom_get(member) read_eeprom(offsetof(eeprom_layout, member), member_size(eeprom_layout, member)) //Get struct member from eeprom
 
 void read_eeprom(int reg, int amount) {   //Read bytes from eeprom
   Wire.beginTransmission(eeprom_ext);
@@ -15,19 +13,15 @@ void read_eeprom(int reg, int amount) {   //Read bytes from eeprom
   }
 }
 
-void write_eeprom_setup(int member_offset, int member_size) { //Todo: some kind of checking?
+void write_eeprom_setup(int reg, int amount, byte data[]) { //If data crosses page boundary, it needs to be written in two parts to avoid roll-over
+  byte amount_available = page_size - (reg % page_size);  //How much can be written on the current page
+  byte amount_current_page = min(amount, amount_available);      //Only write what fits on the current page
 
-  memcpy(eeprom_buffer.as_bytes, incoming_data._byte + 2, actual_data_count); //Put data in buffer so it can be sent to eeprom
-  
-  //If data crosses page boundary, it needs to be written in two parts to avoid roll-over, todo put in eeprom function
-  byte amount_available = page_size - (member_offset % page_size);  //How much can be written on the current page
-  byte amount_current_page = min(member_size, amount_available);      //Only write what fits on the current page
+  write_eeprom(reg, amount_current_page, data);
 
-  write_eeprom(member_offset, amount_current_page, eeprom_buffer.as_bytes);
-  
-  byte amount_next_page = member_size - amount_current_page;
+  byte amount_next_page = amount - amount_current_page;
   if (amount_next_page > 0) { //If there is something to write
-    write_eeprom(member_offset + amount_current_page, amount_next_page, eeprom_buffer.as_bytes + amount_current_page); //Write what remains on the next page
+    write_eeprom(reg + amount_current_page, amount_next_page, eeprom_buffer.as_bytes + amount_current_page); //Write what remains on the next page
   }
 }
 

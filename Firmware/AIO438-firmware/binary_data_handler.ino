@@ -1,4 +1,7 @@
-//This file is mostly broken now, todo: fix
+//Serial encoding constants
+const byte special_marker = 253; //Value 253, 254 and 255 can be sent as 253 0, 253 1 and 253 2 respectively
+const byte start_marker = 254;
+const byte end_marker = 255;
 
 void binary_data_handler() { //Once data is received, it will be handled in the following order
   decode_incoming_data();
@@ -23,33 +26,31 @@ void decode_incoming_data() {
 }
 
 void check_data() {
-  fault_code = ack; //ACK by default
+  //fault_code = ack; //ACK by default
 
-  actual_data_count = incoming_data_count - 3; //Size is total bytes - group ID - command ID - CRC8
+  actual_data_count = incoming_data_count - 3; //Size is total bytes - function code - CRC16
 
   if (actual_data_count < 0) {
     fault_code = invalid_size;
     return;
   }
 
-  if(crc8(incoming_data._byte, incoming_data_count - 1, 0x7)) { //If total CRC is not zero, message is corrupt
-    fault_code = invalid_crc;
+  if(crc16(incoming_data._byte, incoming_data_count, 0x1021)) { //If total CRC is not zero, message is corrupt
+    //fault_code = invalid_crc;
     return;
   }
 
-  if (actual_data_count == 0) {
-    //Read back, not implemented yet
-  }
-
-  command_handler();
+  binary_command_handler();
 }
 
 void prepare_outgoing_data() {
-  outgoing_data_count = 4;
+  outgoing_data_count = 4; //Todo: construct actual reply
   outgoing_data[0] = 0;
   outgoing_data[1] = 0;
   outgoing_data[2] = fault_code;
-  outgoing_data[3] = crc8(outgoing_data, outgoing_data_count - 1, 0x7);
+  uint16_t crc = crc16(incoming_data._byte, incoming_data_count - 2, 0x1021);
+  outgoing_data[3] = crc << 8;
+  outgoing_data[4] = crc & 0xFF;
 }
 
 void encode_outgoing_data() { //Outgoing data
@@ -73,8 +74,8 @@ void send_data() {
 }
 
 void apply_settings() {
-  if(load_eeprom) {
+  if(apply_settings_flag) {
     Serial.println(F("New settings applied"));
-    load_eeprom = false;
+    apply_settings_flag = false;
   } 
 }

@@ -17,9 +17,9 @@ void ascii_data_handler() {
       Serial.println(vol);
     }
   } else if (!strcmp(command, "PULSE")) {
-    byte PIO = strtol(strtok (NULL, " "), NULL, 0);
+    byte pio = strtol(strtok (NULL, " "), NULL, 0);
     int duration = strtol(strtok (NULL, " "), NULL, 0);
-    send_pulse(PIO, duration);
+    send_pulse(pio, duration);
   } else if (!strcmp(command, "STATUS")) {
     get_status();
   } else if (!strcmp(command, "DUMP")) {
@@ -43,13 +43,13 @@ void dump_dsp() {
   //Todo?
 }
 
-
 void get_status() {
   write_register_dual(0x78, 0x80);      //Clear all faults
   Serial.print(F("Power voltage = "));
   Serial.println(power_voltage);
   Serial.print(F("Volume = "));
   Serial.println(vol);
+  //Add info, hw and stuff?
   get_status_amp(amp_1);
   get_status_amp(amp_2);
   //Load eeprom
