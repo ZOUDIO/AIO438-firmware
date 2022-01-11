@@ -36,11 +36,11 @@ void ascii_data_handler() {
 }
 
 void dump_eeprom() {
-  //Todo?
+  //todo?
 }
 
 void dump_dsp() {
-  //Todo?
+  //todo?
 }
 
 void get_status() {
@@ -49,7 +49,8 @@ void get_status() {
   Serial.println(power_voltage);
   Serial.print(F("Volume = "));
   Serial.println(vol);
-  //Add info, hw and stuff?
+  //todo: Add info, hw and stuff?
+  //todo: Check i2c presence
   get_status_amp(amp_1);
   get_status_amp(amp_2);
   //Load eeprom

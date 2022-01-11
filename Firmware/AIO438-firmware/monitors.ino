@@ -17,7 +17,7 @@ void serial_monitor() {
         incoming_data._char[i] = toupper(temp_buffer[i]);  //Make uppercase
       }
       ascii_data_handler();
-      memset(incoming_data._char, 0, array_size); //Todo: should not be necessary, find out
+      memset(incoming_data._char, 0, array_size); //todo: should not be necessary, find out
       temp_buffer_count = 0;
     } else if (incoming_byte > 31 && incoming_byte < 123)  {  //Only allow printable characters
       if (temp_buffer_count < array_size) {                    //Prevent overflow
@@ -70,21 +70,17 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
   }
   set_vol();
 
-  rot_button.Update();
+  rot_button.Update(); //Implement actions
   if (rot_button.clicks == 1) {             //Short single press: turn off
     system_enabled = false;
   } else if (rot_button.clicks == 2) {      //Short double press: next track
     Serial.println(F("Next track"));
-    //Implement
   } else if (rot_button.clicks == 3) {      //Short triple press: previous track
     Serial.println(F("Previous track"));
-    //Implement
   } else if (rot_button.clicks == -1) {     //Long press: enter pairing
     Serial.println(F("Enter pairing"));
-    //Implement
   } else if (rot_button.clicks == -2) {     //Double press and hold: reset pairing list
     Serial.println(F("Reset pairing list"));
-    //Implement
   }
 }
 
@@ -111,7 +107,7 @@ void power_monitor() { //Check system voltage. Update system state, status LED a
 
 void analog_gain_monitor() {
   analog_gain = map(power_voltage, 29.5, 4.95, 0, 31); //Calculate analog gain (29.5V = 0, 4.95V = 31)
-  if (abs(analog_gain - analog_gain_old) > 2) { //Only update if difference is more than 2 to avoid rapid toggling
+  if (abs(analog_gain - analog_gain_old) > 1) { //Only update if difference is more than 1 to avoid rapid toggling
     analog_gain = max(analog_gain, 0);  //Set absolute minimum
     analog_gain = min(analog_gain, 31); //Set absolute maximum
     write_register_dual(0x54, analog_gain);
@@ -124,21 +120,20 @@ void tws_monitor() { //Check TrueWirelessStereo button
 }
 
 void eq_monitor() { //Check EQ button
-  eq_state = digitalRead(eq_sw);
-  if (eq_state != eq_state_old) {      //If state changed
+  eq_state = digitalRead(eq_sw);    //Read state
+  if (eq_state != eq_state_old) {   //If state changed
     delay(1000);                    //Wait 1 second
-    eq_state = digitalRead(eq_sw);   //Read state again
-    if (eq_state != eq_state_old) {    //If state is still changed (toggle switch)
-      eq_enabled = eq_state;           //Set EQ based on switch position
+    eq_state = digitalRead(eq_sw);  //Read state again
+    if (eq_state != eq_state_old) { //If state is still changed (toggle switch)
+      eq_enabled = eq_state;        //Set EQ based on switch position
     } else {                        //If state returns to old state (momentary switch)
-      eq_enabled = !eq_enabled;         //Toggle state
+      eq_enabled = !eq_enabled;     //Toggle state
     }
     eq_state_old = eq_state;
   }
 
   if (eq_enabled != eq_enabled_old) {
-    //Todo: implement
-    Serial.println(F("EQ not available")); //Todo: enable
+    Serial.println(F("EQ not implemented yet")); //todo: enable
     
     set_led("OFF", 500);            //Blink LED to notify user if EQ is on (green) or off (red)
     if (eq_enabled) {
@@ -146,7 +141,7 @@ void eq_monitor() { //Check EQ button
     } else {
       set_led("RED", 500);
     }
-    set_led("OFF", 500);
+    set_led("OFF", 500);  //Led will be enabled again by power_monitor()
     eq_enabled_old = eq_enabled;
   }
 }

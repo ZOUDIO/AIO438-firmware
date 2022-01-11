@@ -31,7 +31,7 @@ void check_data() {
   actual_data_count = incoming_data_count - 3; //Size is total bytes - function code - CRC16
 
   if (actual_data_count < 0) {
-    fault_code = invalid_size;
+    //fault_code = invalid_size;
     return;
   }
 
@@ -44,7 +44,7 @@ void check_data() {
 }
 
 void prepare_outgoing_data() {
-  outgoing_data_count = 4; //Todo: construct actual reply
+  outgoing_data_count = 4; //todo: construct actual reply
   outgoing_data[0] = 0;
   outgoing_data[1] = 0;
   outgoing_data[2] = fault_code;
@@ -76,6 +76,7 @@ void send_data() {
 void apply_settings() {
   if(apply_settings_flag) {
     Serial.println(F("New settings applied"));
+    //todo: actually load new settings
     apply_settings_flag = false;
   } 
 }
