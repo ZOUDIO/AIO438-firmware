@@ -1,4 +1,3 @@
-//todo: check padding everywhere
 enum class entry_type_enum { //Determines how the entry data is handled
   system_variables,
   dsp_default,  //Always used
@@ -7,18 +6,18 @@ enum class entry_type_enum { //Determines how the entry data is handled
   empty = 255,  //Default value of an eeprom byte
 };
 
-struct dsp_eq_struct { //Used during runtime to know which entry contains the eq dsp instructions
-  uint8_t dsp_eq_off_entry_index;
-  uint8_t dsp_eq_on_entry_index;
-};
+//struct { //Used during runtime to know which entry contains the eq dsp instructions
+//  uint8_t dsp_eq_off_entry_index;
+//  uint8_t dsp_eq_on_entry_index;
+//} dsp_eq;
 
 struct entry_struct {
-  entry_type_enum type;
-  uint16_t location;
+  uint8_t type; //Check against entry_type_enum
+  uint16_t address;
   uint16_t size;
   uint16_t crc;
   uint8_t amp; //0 = all amps
-  uint8_t rfu[7];
+  uint8_t rfu[8]; //Pad to 16 bytes
 };
 
 struct allocation_table {
@@ -37,31 +36,27 @@ struct system_variables {
 };
 
 struct version_struct {
-  byte major;
-  byte minor;
-  byte patch;
+  uint8_t major;
+  uint8_t minor;
+  uint8_t patch;
 };
 
 enum class model_enum { //Product model name
   AIO4CH,
   AIO438,
-  empty = 255,          //Default value of an eeprom byte
+  empty = 255,  //Default value of an eeprom byte
 };
 
 struct factory_data_struct {
-  uint16_t signature;         //Should be 0x5555
-  model_enum model;
+  uint16_t signature; //Should be 0x5555
+  uint8_t model;      //Check against model_enum
   version_struct hw_version;
   version_struct bt_fw_version;
 };
 
 struct eeprom_layout {
   factory_data_struct factory_data;
-  uint8_t rfu[55];
+  uint8_t rfu[119]; //Pad to 128 bytes
   allocation_table table;
   //Remainder of eeprom is reserved for data storage
-};
-
-struct variables {
-  //Currently empty, but needed
 };

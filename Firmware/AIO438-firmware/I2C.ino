@@ -2,6 +2,11 @@
 #define eeprom_put(member) write_eeprom_setup(offsetof(eeprom_layout, member), member_size(eeprom_layout, member), eeprom_buffer.as_bytes)  //Write buffer data to to eeprom
 #define eeprom_get(member) read_eeprom(offsetof(eeprom_layout, member), member_size(eeprom_layout, member)) //Fill buffer with eeprom data
 
+bool detect_device(int addr) {
+  Wire.beginTransmission(addr);
+  return (!Wire.endTransmission()); //0 = success
+}
+
 void read_eeprom(int reg, int amount) { //Read bytes from eeprom
   Wire.beginTransmission(eeprom_ext);
   Wire.write(reg >> 8);   // MSB
@@ -13,7 +18,8 @@ void read_eeprom(int reg, int amount) { //Read bytes from eeprom
   }
 }
 
-void write_eeprom_setup(int reg, int amount, byte data[]) { //If data crosses page boundary, it needs to be written in two parts to avoid roll-over
+void write_eeprom_setup(int reg, int amount, byte data[]) { //Write buffer to eeprom todo: figure out if last arg is needed
+  //If data crosses page boundary, it needs to be written in two parts to avoid roll-over
   byte amount_available = page_size - (reg % page_size);    //How much can be written on the current page
   byte amount_current_page = min(amount, amount_available); //Only write what fits on the current page
 
@@ -21,7 +27,7 @@ void write_eeprom_setup(int reg, int amount, byte data[]) { //If data crosses pa
 
   byte amount_next_page = amount - amount_current_page;
   if (amount_next_page > 0) { //If there is data remaining
-    write_eeprom(reg + amount_current_page, amount_next_page, eeprom_buffer.as_bytes + amount_current_page); //Write what remains on the next page
+    write_eeprom(reg + amount_current_page, amount_next_page, data + amount_current_page); //Write what remains on the next page
   }
 }
 
@@ -48,7 +54,7 @@ void write_register_dual(byte reg, byte data) { //Write to both amplifiers todo:
   write_register(amp_2, reg, data);
 }
 
-void burst_write(byte amp, byte amount) {
+void burst_write(byte amp, byte amount) { //From eeprom buffer to amp todo: improve?
   Wire.beginTransmission(amp);
   for (byte i = 0; i < amount; i++) {
     Wire.write(eeprom_buffer.as_bytes[i]);

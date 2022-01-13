@@ -5,10 +5,7 @@ const byte end_marker = 255;
 
 void binary_data_handler() { //Once data is received, it will be handled in the following order
   decode_incoming_data();
-  check_data();
-  prepare_outgoing_data();
-  encode_outgoing_data();
-  send_data();
+  process_data();
   apply_settings();
 }
 
@@ -25,32 +22,38 @@ void decode_incoming_data() {
   }
 }
 
-void check_data() {
-  //fault_code = ack; //ACK by default
+void process_data() {
+  
+  actual_data_count = incoming_data_count - 2; //Size excluding CRC16
 
-  actual_data_count = incoming_data_count - 3; //Size is total bytes - function code - CRC16
-
-  if (actual_data_count < 0) {
-    //fault_code = invalid_size;
-    return;
+  if (actual_data_count <= 0) { //If there is no actual data
+    return; //Drop message
   }
 
-  if(crc16(incoming_data._byte, incoming_data_count, 0x1021)) { //If total CRC is not zero, message is corrupt
-    //fault_code = invalid_crc;
-    return;
+  if (crc16(incoming_data._byte, incoming_data_count, 0x1021)) { //If total CRC is not zero, message is corrupt
+    return; //Drop message
   }
 
   binary_command_handler();
+  prepare_outgoing_data();
+  encode_outgoing_data();
+  send_data();
 }
 
 void prepare_outgoing_data() {
-  outgoing_data_count = 4; //todo: construct actual reply
-  outgoing_data[0] = 0;
-  outgoing_data[1] = 0;
-  outgoing_data[2] = fault_code;
-  uint16_t crc = crc16(incoming_data._byte, incoming_data_count - 2, 0x1021);
-  outgoing_data[3] = crc << 8;
-  outgoing_data[4] = crc & 0xFF;
+  if (payload.function_code == 1) { //Write bytes function
+    outgoing_data_count = 4; //Function_code, address and amount
+  } else if (payload.function_code == 2) { //Read bytes function
+    outgoing_data_count = payload.with_addr.amount + 4; //Function_code, address, amount and data bytes
+  } else { //Function_code 3 and error_codes
+    outgoing_data_count = 1; //Only function code
+  }
+
+  memcpy(&outgoing_data, &payload, outgoing_data_count);
+
+  uint16_t crc = crc16(outgoing_data, outgoing_data_count, 0x1021);
+  outgoing_data[++outgoing_data_count] = crc << 8;
+  outgoing_data[++outgoing_data_count] = crc & 0xFF;
 }
 
 void encode_outgoing_data() { //Outgoing data
@@ -74,9 +77,9 @@ void send_data() {
 }
 
 void apply_settings() {
-  if(apply_settings_flag) {
+  if (apply_settings_flag) {
     Serial.println(F("New settings applied"));
-    //todo: actually load new settings
+    load_eeprom(); //todo check
     apply_settings_flag = false;
-  } 
+  }
 }

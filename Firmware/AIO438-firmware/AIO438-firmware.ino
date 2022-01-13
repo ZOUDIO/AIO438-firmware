@@ -9,9 +9,17 @@
   Board has onboard CP2102N for communication and firmware uploads via UART
 */
 
-//todo: flash strings
-//todo: include libs in src/ and use submodules
-//todo: look at better file split
+/* General todo list
+  - use flash strings
+  - include libs in src/ and use submodules
+  - look at better file split
+  - consolidate i/o data
+  - remove unions, use memcpy?
+  - pass by reference instead of value?
+  - Improve error reporting to master
+  - Check for naming consistency
+*/
+
 #include "src/ArduinoLibraryWire/Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
 #include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
@@ -24,7 +32,7 @@
 #include "hardware.h"         //Hardware determined constants
 #include "eeprom_layout.h"    //Struct definitions for eeprom storage
 
-const char model[] = "AIO438";
+const char model[] = "AIO438"; //Todo: put/get in/from eeprom
 const char firmware[] = "0.2.0";
 
 const uint8_t hw_support_major = 1; //This firmware supports hardware version up until this major version number
@@ -37,14 +45,14 @@ const byte array_size = 69;  //1 function code, 2 address, 64 data and 2 CRC byt
 const byte cfg_meta_burst = 253;
 const byte cfg_meta_delay = 254;
 
-//Structs that are used during runtime
-system_variables user;
-factory_data_struct factory_data;
-
-typedef struct { //todo: look if needed
+typedef struct {
   uint8_t command;
   uint8_t param;
 } cfg_reg;
+
+//Structs that are used during runtime
+system_variables user;
+factory_data_struct factory_data;
 
 union { //Used for type conversion
   byte as_bytes[64];
@@ -60,13 +68,27 @@ union {
   char _char[array_size]; //Get as char array
 } incoming_data;
 
+struct {
+  uint8_t function_code; //todo: make enum
+  union {
+    struct {
+      uint16_t addr;
+      uint8_t amount;
+      uint8_t data[64];
+    } with_addr;
+    struct {
+      uint8_t data[67];
+    } as_bytes;
+  };
+} payload;
+
 byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 byte outgoing_data[array_size];   //Data before encoding
 
 byte incoming_data_count;
 byte outgoing_data_count;
 byte temp_buffer_count;
-char actual_data_count; //Can be negative
+char actual_data_count; //Can be negative todo: see if actually needed
 bool currently_receiving;
 
 bool eq_enabled;
@@ -81,6 +103,7 @@ float vol_reduction;
 float power_voltage;
 char analog_gain;
 char analog_gain_old;
+bool eeprom_loaded; //Set if eeprom settings are loaded succesfully
 
 ClickButton rot_button(rot_sw, HIGH); //Encoder switch
 ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
@@ -112,6 +135,8 @@ void setup() {
   crc.setPolynome(0x1021); //todo: default?
 
   //todo: static_asserts
+  static_assert(sizeof(entry_struct) == 16, "Entry_struct size has changed");
+  static_assert(offsetof(eeprom_layout, table) == 128, "Allocation_table offset has changed");
 
   vol = user.vol_start; //Set once
 }
@@ -125,7 +150,7 @@ void loop() {
   while (system_enabled) {
     serial_monitor();
     power_monitor();
-    if (true) { //todo: Check valid state
+    if (eeprom_loaded) { //todo: check functionality
       temperature_monitor();
       analog_gain_monitor();
       rotary_monitor();
@@ -136,23 +161,31 @@ void loop() {
   }
 }
 
-void enable_system() { //Enable or disable system todo: look at sequence
+void enable_system() { //Enable or disable system todo: look at sequence (also i2s)
   while (digitalRead(rot_sw) == HIGH) {}; //Continue when rotary switch is released
   Serial.println(F("Booting..."));
   digitalWrite(vreg_sleep, HIGH);         //Set buckconverter to normal operation
   digitalWrite(expansion_en, HIGH);       //Enable power to expansion connector
 
-  if (load_eeprom()) {                    //If eeprom can be loaded succes
-    if (user.bt_enabled) {
+  eeprom_loaded = load_eeprom();
+  
+  if (/*eeprom_loaded*/ true) {                    //If eeprom can be loaded succes todo
+    if(/*user.bt_enabled*/ true) {
       digitalWrite(bt_enable, HIGH);      //Enable BT module
     }
-    if (user.amp_1_enabled) {
-      digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
+
+    digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
+    digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
+    delay(50);
+    if (!detect_device(amp_1)) {
+      Serial.println(F("Amplifier 1 not found"));
+      return;
     }
-    if (user.amp_2_enabled) {
-      digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
+    if (!detect_device(amp_2)) {
+      Serial.println(F("Amplifier 2 not found"));
+      return;
     }
-    delay(10);                            //Wait for amplifiers to boot
+
     write_register(amp_2, 0x6A, B1011);   //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
     delay(750);                           //Wait for I2S to start todo: revisit boot time
 
@@ -162,7 +195,7 @@ void enable_system() { //Enable or disable system todo: look at sequence
     write_register_dual(0x53, B1100000);  //Set Class D bandwith to 175Khz
     write_register_dual(0x51, B1110111);  //Set automute time to 10.66 seconds
 
-    if (user.vol_start_enabled) { 
+    if (user.vol_start_enabled) {
       vol = user.vol_start; //Set vol if enabled
     }
     vol_old = -104;         //Set vol_old out of range to force set_vol to run
@@ -171,11 +204,18 @@ void enable_system() { //Enable or disable system todo: look at sequence
     analog_gain_old = 32;   //Set analog_gain_old out of range to force analog_gain_monitor to run
     analog_gain_monitor();  //Set analog gain
 
+    eq_state = eq_state_old = digitalRead(eq_sw);     //Enable if EQ switch is closed todo verify
+    eq_enabled = eq_enabled_old = digitalRead(eq_sw);  //Enable if EQ switch is closed
+
     //todo: play startup tone
 
-    //todo: check for enable yes or no within function
-    write_register(amp_1, 0x03, B11);
-    write_register(amp_2, 0x03, B11);
+    //Set enabled amps into play mode
+    if (user.amp_1_enabled) {
+      write_register(amp_1, 0x03, B11);
+    }
+    if (user.amp_2_enabled) {
+      write_register(amp_2, 0x03, B11);
+    }
   } else {
     Serial.println(F("Failed to load settings from memory"));
     Serial.println(F("Amplifier outputs are disabled"));
@@ -188,7 +228,7 @@ void enable_system() { //Enable or disable system todo: look at sequence
   system_enabled = true;
 }
 
-void disable_system() { 
+void disable_system() {
   set_led("OFF");
   Serial.println(F("Off"));
   Serial.flush();
@@ -196,9 +236,8 @@ void disable_system() {
   digitalWrite(amp_1_pdn, LOW);
   digitalWrite(amp_2_pdn, LOW);
   digitalWrite(expansion_en, LOW);
-  delay(50);                        //Wait for everything to power off todo: longer?
+  delay(500);                       //Wait for everything to power off
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
-
   wdt_disable();                    //Disable watchdog timer
   LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
   /* System will be in powerdown until interrupt occurs */

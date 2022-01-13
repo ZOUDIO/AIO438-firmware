@@ -1,5 +1,5 @@
 void ascii_data_handler() {
-  char *command = strtok (incoming_data._char, " ");     //Commands are space-delimited
+  char *command = strtok (incoming_data._char, " ");  //Commands are space-delimited
 
   if (!strcmp(command, "MODEL")) {
     Serial.println(model);
@@ -43,22 +43,66 @@ void dump_dsp() {
   //todo?
 }
 
-void get_status() {
-  write_register_dual(0x78, 0x80);      //Clear all faults
-  Serial.print(F("Power voltage = "));
-  Serial.println(power_voltage);
-  Serial.print(F("Volume = "));
+void get_status() { //todo error checking before displaying
+  write_register_dual(0x78, 0x80);  //Clear all faults
+
+  Serial.print(F("Model = "));
+  Serial.println(model);
+  Serial.print(F("Firmware version = "));
+  Serial.println(firmware);
+  
+  Serial.print(F("Hardware version = "));
+  print_version_struct(factory_data.hw_version);
+  Serial.print(F("Firmware supports up to hardware version "));
+  Serial.println(hw_support_major);
+
+  Serial.print(F("Firmware supports up to bluetooth firmware version "));
+  Serial.println(bt_fw_support_major);
+  Serial.print(F("Bluetooth firmware version = "));
+  print_version_struct(factory_data.bt_fw_version);
+
+  Serial.print(F("Amp 1 enabled = "));
+  Serial.println(user.amp_1_enabled);
+  Serial.print(F("Amp 2 enabled = "));
+  Serial.println(user.amp_2_enabled);
+  Serial.print(F("Bluetooth enabled = "));
+  Serial.println(user.bt_enabled);
+
+  Serial.print(F("Volume (dB) = "));
   Serial.println(vol);
-  //todo: Add info, hw and stuff?
-  //todo: Check i2c presence
+  Serial.print(F("Start volume enabled = "));
+  Serial.println(user.vol_start_enabled);
+  Serial.print(F("Start volume (dB) = "));
+  Serial.println(user.vol_start);
+  Serial.print(F("Max volume (dB) = "));
+  Serial.println(user.vol_max);
+
+  Serial.print(F("Voltage (V) = "));
+  Serial.println(power_voltage);
+  Serial.print(F("Power low (V) = "));
+  Serial.println(user.power_low);
+  Serial.print(F("Power shutdown (V) = "));
+  Serial.println(user.power_shutdown);
+
+  Serial.println();
   get_status_amp(amp_1);
   get_status_amp(amp_2);
-  //Load eeprom
+
+  Serial.println();
+  //todo eeprom table report?
+}
+
+void print_version_struct(version_struct _struct) { //Print like 'major.minor.patch
+  Serial.print(_struct.major);
+  Serial.print(F("."));
+  Serial.print(_struct.minor);
+  Serial.print(F("."));
+  Serial.println(_struct.patch);
 }
 
 void get_status_amp(int amp) {
-  if (amp == amp_1) Serial.println(F("Status amp_1:"));
-  if (amp == amp_2) Serial.println(F("Status amp_2:"));
+  if (amp == amp_1) Serial.println(F("Status amp 1:"));
+  if (amp == amp_2) Serial.println(F("Status amp 2:"));
 
   byte reg39h = read_register(amp, 0x39);
   if (bitRead(reg39h, 0)) Serial.println(F("Invalid sampling rate"));

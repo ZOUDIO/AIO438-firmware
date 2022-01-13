@@ -1,4 +1,4 @@
-//Pinout
+//Pinout, todo const uint?
 #define bt_led_0      2   //PD2
 #define bt_enable     3   //PD3
 #define amp_2_pdn     4   //PD4

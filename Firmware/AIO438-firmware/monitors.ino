@@ -145,3 +145,7 @@ void eq_monitor() { //Check EQ button
     eq_enabled_old = eq_enabled;
   }
 }
+
+void aux_level_monitor() {
+  //Todo: implement
+}
