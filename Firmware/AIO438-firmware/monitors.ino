@@ -31,7 +31,7 @@ void serial_monitor() {
 void temperature_monitor() { //Check every second if the amplifier temperature is too high and reduce volume accordingly  
   static unsigned long lastTemp;
   if ((millis() - lastTemp) > 1000) {
-    write_register_dual(0x78, 0x80);  //Reset fault register
+    write_single_register(amp_dual, 0x78, 0x80);  //Reset fault register
     byte temp_register = (read_register(amp_1, 0x73) | read_register(amp_2, 0x73)); //Take the highest temperature of both amplifiers
     //Register 0x73: bit 1 = 112*C, bit 2 = 122*C, bit 3 = 134 *C, bit 4 = 146 *C
     if (bitRead(temp_register, 3)) Serial.println(F("High temperature: 146 *C"));
@@ -110,7 +110,7 @@ void analog_gain_monitor() {
   if (abs(analog_gain - analog_gain_old) > 1) { //Only update if difference is more than 1 to avoid rapid toggling
     analog_gain = max(analog_gain, 0);  //Set absolute minimum
     analog_gain = min(analog_gain, 31); //Set absolute maximum
-    write_register_dual(0x54, analog_gain);
+    write_single_register(amp_dual, 0x54, analog_gain);
     analog_gain_old = analog_gain;
   }
 }

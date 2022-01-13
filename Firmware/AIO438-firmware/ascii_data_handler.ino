@@ -44,7 +44,7 @@ void dump_dsp() {
 }
 
 void get_status() { //todo error checking before displaying
-  write_register_dual(0x78, 0x80);  //Clear all faults
+  write_single_register(amp_dual, 0x78, 0x80);  //Clear all faults
 
   Serial.print(F("Model = "));
   Serial.println(model);

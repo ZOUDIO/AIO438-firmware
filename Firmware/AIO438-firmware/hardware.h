@@ -21,8 +21,8 @@
 #define bt_pio_19     26  //PE3
 
 //I2C addresses
-#define amp_1         0x4D
-#define amp_2         0x4C
+#define amp_1_addr    0x4D
+#define amp_2_addr    0x4C
 #define eeprom_ext    0x50
 
 //EEPROM properties

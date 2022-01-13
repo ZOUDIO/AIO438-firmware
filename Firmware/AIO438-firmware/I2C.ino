@@ -42,22 +42,26 @@ void write_eeprom(int reg, int amount, byte data[]) { //Write bytes to eeprom
   delay(5);
 }
 
-void write_register(byte amp, byte reg, byte data) {  //Write value to register
-  Wire.beginTransmission(amp);
-  Wire.write(reg);
-  Wire.write(data);
-  Wire.endTransmission();
+void write_single_register(byte amp, byte reg, byte data) { //Single byte write
+  byte arr[] = {reg, data}; //Package into array
+  write_multiple_registers(amp, arr, sizeof(arr));
 }
 
-void write_register_dual(byte reg, byte data) { //Write to both amplifiers todo: revise easier with checking
-  write_register(amp_1, reg, data);
-  write_register(amp_2, reg, data);
+void write_multiple_registers(byte amp, byte data[], byte amount) { //Array write
+  if(amp == amp_dual) { //Write to both amps
+    write_registers(amp_1, data, amount);
+    write_registers(amp_2, data, amount);
+  } if (amp == amp_1) {
+    write_registers(amp_1_addr, data, amount);
+  } else if(amp == amp_2) {
+    write_registers(amp_2_addr, data, amount);
+  }
 }
 
-void burst_write(byte amp, byte amount) { //From eeprom buffer to amp todo: improve?
+void write_registers(byte amp, byte data[], byte amount) {  //Write values to registers
   Wire.beginTransmission(amp);
   for (byte i = 0; i < amount; i++) {
-    Wire.write(eeprom_buffer.as_bytes[i]);
+    Wire.write(data[i]);
   }
   Wire.endTransmission();
 }

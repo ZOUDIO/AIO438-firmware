@@ -82,14 +82,7 @@ void load_dsp(int start_reg, int amount, byte amp) {
       case cfg_meta_burst: {
           byte burst_amount = r.param + 1; //Register plus data
           read_eeprom(i + 2, burst_amount); //Get bytes from eeprom
-          if (amp == 0) { //Write to all amps
-            burst_write(amp_1, burst_amount);
-            burst_write(amp_2, burst_amount);
-          } else if (amp == 1) { //Write to amp_1
-            burst_write(amp_1, burst_amount);
-          } else if (amp == 2) { //Write to amp_2
-            burst_write(amp_2, burst_amount);
-          }
+          write_multiple_registers(amp, eeprom_buffer.as_bytes, burst_amount);
           i += burst_amount; //Move past register and data
           if (i % 2 != 0) {
             i++; //todo simplify, improve
@@ -97,21 +90,15 @@ void load_dsp(int start_reg, int amount, byte amp) {
           break;
         }
       default:
-        if (amp == 0) { //Write to all amps
-          write_register_dual(r.command, r.param);
-        } else if (amp == 1) { //Write to amp_1
-          write_register(amp_1, r.command, r.param);
-        } else if (amp == 2) { //Write to amp_2
-          write_register(amp_2, r.command, r.param);
-        }
+        write_single_register(amp, r.command, r.param);
         break;
     }
   }
 
   //Go back to book 0 page 0
-  write_register_dual(0, 0);
-  write_register_dual(0x7F, 0);
-  write_register_dual(0, 0);
+  write_single_register(amp_dual, 0, 0);
+  write_single_register(amp_dual, 0x7F, 0);
+  write_single_register(amp_dual, 0, 0);
 }
 
 uint16_t calculate_crc(int start_reg, int amount) {

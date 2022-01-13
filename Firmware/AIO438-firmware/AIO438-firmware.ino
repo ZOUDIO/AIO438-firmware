@@ -38,8 +38,11 @@ const char firmware[] = "0.2.0";
 const uint8_t hw_support_major = 1; //This firmware supports hardware version up until this major version number
 const uint8_t bt_fw_support_major = 1; //This firmware supports bluetooth version up until this major version number
 
-const bool verbose = true; //Can be passed to functions
-const byte array_size = 69;  //1 function code, 2 address, 64 data and 2 CRC bytes
+//Can to pass to functions
+int amp_dual = 0; //Write to both amps, todo: pack in enum?
+int amp_1 = 1;
+int amp_2 = 2;
+const bool verbose = true;
 
 //PurePathConsole constants
 const byte cfg_meta_burst = 253;
@@ -63,11 +66,6 @@ union { //Used for type conversion
   cfg_reg as_cfg_reg;
 } eeprom_buffer;
 
-union {
-  byte _byte[array_size]; //Get as byte array
-  char _char[array_size]; //Get as char array
-} incoming_data;
-
 struct {
   uint8_t function_code; //todo: make enum
   union {
@@ -82,8 +80,14 @@ struct {
   };
 } payload;
 
+const byte array_size = sizeof(payload) + 2;  //Payload plus 2 CRC bytes
 byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 byte outgoing_data[array_size];   //Data before encoding
+
+union {
+  byte _byte[array_size]; //Get as byte array
+  char _char[array_size]; //Get as char array
+} incoming_data;
 
 byte incoming_data_count;
 byte outgoing_data_count;
@@ -132,7 +136,9 @@ void setup() {
   attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
 
   //todo: set CRC16-CCITT
-  crc.setPolynome(0x1021); //todo: default?
+  //crc.setPolynome(0x1021); //todo: default?
+  char test[] = "123456789";
+  Serial.println(crc16(outgoing_data, outgoing_data_count, 0x1021));
 
   //todo: static_asserts
   static_assert(sizeof(entry_struct) == 16, "Entry_struct size has changed");
@@ -186,14 +192,14 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
       return;
     }
 
-    write_register(amp_2, 0x6A, B1011);   //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
+    write_single_register(amp_2, 0x6A, B1011);   //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
     delay(750);                           //Wait for I2S to start todo: revisit boot time
 
     //Overwrite these settings
-    write_register_dual(0x76, B10000);    //Enable over-temperature auto recovery
-    write_register_dual(0x77, B111);      //Enable Cycle-By-Cycle over-current protection
-    write_register_dual(0x53, B1100000);  //Set Class D bandwith to 175Khz
-    write_register_dual(0x51, B1110111);  //Set automute time to 10.66 seconds
+    write_single_register(amp_dual, 0x76, B10000);    //Enable over-temperature auto recovery
+    write_single_register(amp_dual, 0x77, B111);      //Enable Cycle-By-Cycle over-current protection
+    write_single_register(amp_dual, 0x53, B1100000);  //Set Class D bandwith to 175Khz
+    write_single_register(amp_dual, 0x51, B1110111);  //Set automute time to 10.66 seconds
 
     if (user.vol_start_enabled) {
       vol = user.vol_start; //Set vol if enabled
@@ -211,10 +217,10 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
 
     //Set enabled amps into play mode
     if (user.amp_1_enabled) {
-      write_register(amp_1, 0x03, B11);
+      write_single_register(amp_1, 0x03, B11);
     }
     if (user.amp_2_enabled) {
-      write_register(amp_2, 0x03, B11);
+      write_single_register(amp_2, 0x03, B11);
     }
   } else {
     Serial.println(F("Failed to load settings from memory"));
@@ -275,7 +281,7 @@ void set_vol() {
     vol = min(vol, user.vol_max); //Set user-defined maximum
     vol = min(vol, 24);           //Set absolute maximum
     byte vol_register = 48 - 2 * vol;         //Convert decibel to register value
-    write_register_dual(0x4C, vol_register);  //Write to amps
+    write_single_register(amp_dual, 0x4C, vol_register);  //Write to amps
     vol_old = vol;
   }
 }
