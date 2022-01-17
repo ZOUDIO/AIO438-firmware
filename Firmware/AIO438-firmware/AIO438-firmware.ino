@@ -37,6 +37,7 @@ const char firmware[] = "0.2.0";
 
 const uint8_t hw_support_major = 1; //This firmware supports hardware version up until this major version number
 const uint8_t bt_fw_support_major = 1; //This firmware supports bluetooth version up until this major version number
+//todo configtool compat int?
 
 //Can to pass to functions
 int amp_dual = 0; //Write to both amps, todo: pack in enum?
@@ -135,11 +136,6 @@ void setup() {
   attachPinChangeInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial
   attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
 
-  //todo: set CRC16-CCITT
-  //crc.setPolynome(0x1021); //todo: default?
-  char test[] = "123456789";
-  Serial.println(crc16(outgoing_data, outgoing_data_count, 0x1021));
-
   //todo: static_asserts
   static_assert(sizeof(entry_struct) == 16, "Entry_struct size has changed");
   static_assert(offsetof(eeprom_layout, table) == 128, "Allocation_table offset has changed");
@@ -155,8 +151,8 @@ void loop() {
   enable_system();
   while (system_enabled) {
     serial_monitor();
-    power_monitor();
-    if (eeprom_loaded) { //todo: check functionality
+    //power_monitor();
+    if (false /*eeprom_loaded*/) { //todo: check functionality
       temperature_monitor();
       analog_gain_monitor();
       rotary_monitor();
@@ -183,11 +179,11 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
     digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
     digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
     delay(50);
-    if (!detect_device(amp_1)) {
+    if (!detect_device(amp_1_addr)) {
       Serial.println(F("Amplifier 1 not found"));
       return;
     }
-    if (!detect_device(amp_2)) {
+    if (!detect_device(amp_2_addr)) {
       Serial.println(F("Amplifier 2 not found"));
       return;
     }

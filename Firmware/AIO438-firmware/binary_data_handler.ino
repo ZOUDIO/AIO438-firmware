@@ -9,7 +9,7 @@ void binary_data_handler() { //Once data is received, it will be handled in the 
   apply_settings();
 }
 
-void decode_incoming_data() {
+void decode_incoming_data() {  
   incoming_data_count = 0;                        //Keeps track of how many data is received
   for (int i = 0; i < temp_buffer_count; i++) {   //Go through whole temp_buffer array
     byte x = temp_buffer[i];                     //Load byte
@@ -23,14 +23,21 @@ void decode_incoming_data() {
 }
 
 void process_data() {
-  
   actual_data_count = incoming_data_count - 2; //Size excluding CRC16
 
   if (actual_data_count <= 0) { //If there is no actual data
     return; //Drop message
   }
 
-  if (crc16(incoming_data._byte, incoming_data_count, 0x1021)) { //If total CRC is not zero, message is corrupt
+  int incoming_crc = incoming_data._byte[incoming_data_count - 2] << 8 | incoming_data._byte[incoming_data_count - 1];
+  int calculated_crc = crc16_CCITT(incoming_data._byte, incoming_data_count);
+  
+  if (incoming_crc & 0xFFFF == calculated_crc & 0xFFFF) { //todo remove 0xffff?
+    Serial.println("Invalid CRC");
+    Serial.print("Incoming CRC = ");
+    Serial.println(incoming_crc, HEX);
+    Serial.print("Calculated CRC = ");
+    Serial.println(calculated_crc, HEX);
     return; //Drop message
   }
 
@@ -42,7 +49,7 @@ void process_data() {
 
 void prepare_outgoing_data() {
   if (payload.function_code == 1) { //Write bytes function
-    outgoing_data_count = 4; //Function_code, address and amount
+    outgoing_data_count = actual_data_count; //4 //Function_code, address and amount
   } else if (payload.function_code == 2) { //Read bytes function
     outgoing_data_count = payload.with_addr.amount + 4; //Function_code, address, amount and data bytes
   } else { //Function_code 3 and error_codes
@@ -51,7 +58,7 @@ void prepare_outgoing_data() {
 
   memcpy(&outgoing_data, &payload, outgoing_data_count);
 
-  uint16_t crc = crc16(outgoing_data, outgoing_data_count, 0x1021);
+  uint16_t crc = crc16_CCITT(outgoing_data, outgoing_data_count);
   outgoing_data[++outgoing_data_count] = crc << 8;
   outgoing_data[++outgoing_data_count] = crc & 0xFF;
 }

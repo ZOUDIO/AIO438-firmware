@@ -1,6 +1,6 @@
 void binary_command_handler() {
   memcpy(&payload, incoming_data._byte, actual_data_count); //Copy incoming data into payload struct
-
+  
   switch (payload.function_code) {
     case 1: //Write bytes
       write_eeprom_setup(payload.with_addr.addr, payload.with_addr.amount, payload.with_addr.data);

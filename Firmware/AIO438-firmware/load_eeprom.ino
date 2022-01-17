@@ -34,15 +34,24 @@ bool load_eeprom() {
   uint8_t entry_size = sizeof(entry_struct);
 
   for (int i = 0; i < 32; i++) { //todo: verbosity
-    Serial.print(F("Loading entry "));
-    Serial.println(i);
-
     uint16_t entry_offset = allocation_table_offset + entry_size * i;
     read_eeprom(entry_offset, entry_size);
     entry_struct entry = eeprom_buffer.as_entry;
 
-    if (calculate_crc(entry.address, entry.size) != entry.crc) {
-      Serial.println(F("Invalid CRC"));
+    Serial.print("Entry ");
+    Serial.print(i);
+    if (entry.type == static_cast<uint8_t>(entry_type_enum::empty)) {
+      Serial.println(" is empty");
+      continue; //Jump to next for-loop iteration
+    }
+
+    uint16_t calculated_crc = calculate_crc(entry.address, entry.size);
+    if (calculated_crc != entry.crc) {
+      Serial.println("Invalid CRC");
+      Serial.print("Calculated CRC = ");
+      Serial.println(calculated_crc, HEX);
+      Serial.print("Stored CRC = ");
+      Serial.println(entry.crc, HEX);
       return false;
     }
 
@@ -51,7 +60,7 @@ bool load_eeprom() {
       user = eeprom_buffer.as_user_data;
     } else if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
       load_dsp(entry.address, entry.size, entry.amp);
-    }
+    } //todo eq dsps
   }
 
   return true; //Loading succesful

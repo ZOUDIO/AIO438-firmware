@@ -22,7 +22,6 @@ void write_eeprom_setup(int reg, int amount, byte data[]) { //Write buffer to ee
   //If data crosses page boundary, it needs to be written in two parts to avoid roll-over
   byte amount_available = page_size - (reg % page_size);    //How much can be written on the current page
   byte amount_current_page = min(amount, amount_available); //Only write what fits on the current page
-
   write_eeprom(reg, amount_current_page, data);
 
   byte amount_next_page = amount - amount_current_page;
@@ -49,8 +48,8 @@ void write_single_register(byte amp, byte reg, byte data) { //Single byte write
 
 void write_multiple_registers(byte amp, byte data[], byte amount) { //Array write
   if(amp == amp_dual) { //Write to both amps
-    write_registers(amp_1, data, amount);
-    write_registers(amp_2, data, amount);
+    write_registers(amp_1_addr, data, amount);
+    write_registers(amp_2_addr, data, amount);
   } if (amp == amp_1) {
     write_registers(amp_1_addr, data, amount);
   } else if(amp == amp_2) {
