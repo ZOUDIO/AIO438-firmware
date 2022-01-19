@@ -3,7 +3,6 @@ enum class entry_type_enum { //Determines how the entry data is handled
   dsp_default,  //Always used
   dsp_eq_off,   //Only used when EQ is disabled
   dsp_eq_on,    //Only used when EQ is enabled
-  empty = 255,  //Default value of an eeprom byte
 };
 
 //struct { //Used during runtime to know which entry contains the eq dsp instructions
@@ -13,9 +12,12 @@ enum class entry_type_enum { //Determines how the entry data is handled
 
 struct entry_struct {
   uint8_t type; //Check against entry_type_enum
-  uint16_t address;
-  uint16_t size;
-  uint16_t crc;
+  uint8_t address_msb;
+  uint8_t address_lsb;
+  uint8_t size_msb;
+  uint8_t size_lsb;
+  uint8_t crc_msb;
+  uint8_t crc_lsb;
   uint8_t amp; //0 = all amps
   uint8_t rfu[8]; //Pad to 16 bytes
 };
@@ -25,15 +27,15 @@ struct allocation_table {
 };
 
 struct system_variables {
-  bool amp_1_enabled;
-  bool amp_2_enabled;
-  bool bt_enabled;
-  bool vol_start_enabled; //If false: remember volume through on/off cycles
+  uint8_t amp_1_enabled : 1;
+  uint8_t amp_2_enabled : 1;
+  uint8_t bt_enabled : 1;
+  uint8_t vol_start_enabled : 1; //If false: remember volume through on/off cycles
   float vol_start;
   float vol_max;
   float power_low;
   float power_shutdown;
-};
+} user;
 
 struct version_struct {
   uint8_t major;
@@ -44,7 +46,6 @@ struct version_struct {
 enum class model_enum { //Product model name
   AIO4CH,
   AIO438,
-  empty = 255,  //Default value of an eeprom byte
 };
 
 struct factory_data_struct {
@@ -52,7 +53,7 @@ struct factory_data_struct {
   uint8_t model;      //Check against model_enum
   version_struct hw_version;
   version_struct bt_fw_version;
-};
+} factory_data;
 
 struct eeprom_layout {
   factory_data_struct factory_data;

@@ -10,7 +10,7 @@
 */
 
 /* General todo list
-  - use flash strings
+  - use flash strings (use some kind of general definition?)
   - include libs in src/ and use submodules
   - look at better file split
   - consolidate i/o data
@@ -18,10 +18,13 @@
   - pass by reference instead of value?
   - Improve error reporting to master
   - Check for naming consistency
+  - Clean up comments
+  - Put msbs/lsbs in structs/unions
+  - Use more approriate file types and constants(?)
 */
 
 #include "src/ArduinoLibraryWire/Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
-#include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt
+#include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt //todo Switch to nicohood?
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
 #include "Rotary.h"           //Rotary encoder library from https://github.com/brianlow/Rotary
 #include "CRC.h"              //Cyclic-Redundancy-Check library from https://github.com/RobTillaart/CRC       
@@ -34,10 +37,6 @@
 
 const char model[] = "AIO438"; //Todo: put/get in/from eeprom
 const char firmware[] = "0.2.0";
-
-const uint8_t hw_support_major = 1; //This firmware supports hardware version up until this major version number
-const uint8_t bt_fw_support_major = 1; //This firmware supports bluetooth version up until this major version number
-//todo configtool compat int?
 
 //Can to pass to functions
 int amp_dual = 0; //Write to both amps, todo: pack in enum?
@@ -54,10 +53,6 @@ typedef struct {
   uint8_t param;
 } cfg_reg;
 
-//Structs that are used during runtime
-system_variables user;
-factory_data_struct factory_data;
-
 union { //Used for type conversion
   byte as_bytes[64];
   float as_float;
@@ -71,13 +66,12 @@ struct {
   uint8_t function_code; //todo: make enum
   union {
     struct {
-      uint16_t addr;
+      uint8_t address_msb;
+      uint8_t address_lsb;
       uint8_t amount;
       uint8_t data[64];
     } with_addr;
-    struct {
-      uint8_t data[67];
-    } as_bytes;
+    uint8_t data[67]; //Raw bytes
   };
 } payload;
 
@@ -88,7 +82,7 @@ byte outgoing_data[array_size];   //Data before encoding
 union {
   byte _byte[array_size]; //Get as byte array
   char _char[array_size]; //Get as char array
-} incoming_data;
+} incoming_data; //todo, with reinterpret_cast?
 
 byte incoming_data_count;
 byte outgoing_data_count;
@@ -115,7 +109,7 @@ ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
 Rotary rot = Rotary(rot_a, rot_b);    //Encoder
 CRC16 crc;
 
-void setup() {
+void setup() { //Todo: move pinmodes to after eeprom reading?
   pinMode(expansion_en, OUTPUT);
   pinMode(vreg_sleep, OUTPUT);
   pinMode(bt_enable, OUTPUT);
@@ -133,17 +127,14 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000);
   rot.begin();
-  attachPinChangeInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial
-  attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
 
-  //todo: static_asserts
+  //todo: extend static_asserts
   static_assert(sizeof(entry_struct) == 16, "Entry_struct size has changed");
+  static_assert(sizeof(system_variables) == 17, "System_variables size has changed");
   static_assert(offsetof(eeprom_layout, table) == 128, "Allocation_table offset has changed");
 
   vol = user.vol_start; //Set once
 }
-
-void exit_powerdown() {} //Empty ISR to exit powerdown
 
 void loop() {
   disable_system();
@@ -151,7 +142,7 @@ void loop() {
   enable_system();
   while (system_enabled) {
     serial_monitor();
-    //power_monitor();
+    power_monitor();
     if (false /*eeprom_loaded*/) { //todo: check functionality
       temperature_monitor();
       analog_gain_monitor();
@@ -167,12 +158,13 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
   while (digitalRead(rot_sw) == HIGH) {}; //Continue when rotary switch is released
   Serial.println(F("Booting..."));
   digitalWrite(vreg_sleep, HIGH);         //Set buckconverter to normal operation
-  digitalWrite(expansion_en, HIGH);       //Enable power to expansion connector
 
   eeprom_loaded = load_eeprom();
-  
+
   if (/*eeprom_loaded*/ true) {                    //If eeprom can be loaded succes todo
-    if(/*user.bt_enabled*/ true) {
+    digitalWrite(expansion_en, HIGH);       //Enable power to expansion connector
+    
+    if (/*user.bt_enabled*/ true) {
       digitalWrite(bt_enable, HIGH);      //Enable BT module
     }
 
@@ -189,7 +181,7 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
     }
 
     write_single_register(amp_2, 0x6A, B1011);   //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
-    delay(750);                           //Wait for I2S to start todo: revisit boot time
+    delay(750);                                 //Wait for I2S to start todo: revisit boot time
 
     //Overwrite these settings
     write_single_register(amp_dual, 0x76, B10000);    //Enable over-temperature auto recovery
@@ -240,11 +232,17 @@ void disable_system() {
   digitalWrite(expansion_en, LOW);
   delay(500);                       //Wait for everything to power off
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
+  attachPinChangeInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial todo null pointer function?, update lib?
+  attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
   wdt_disable();                    //Disable watchdog timer
   LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
   /* System will be in powerdown until interrupt occurs */
   wdt_enable(WDTO_8S);              //Enable 8 seconds watchdog timer todo enable
+  detachPinChangeInterrupt(0);       //Wake up from serial
+  detachPinChangeInterrupt(rot_sw);  //Wake up from rotary switch
 }
+
+void exit_powerdown() {} //Empty ISR to exit powerdown
 
 void send_pulse(byte PIO, int duration) { //Send a pulse to a BT PIO to 'press' it (see GPIO mapping for more info) todo documentation
   digitalWrite(PIO, HIGH);
@@ -280,4 +278,22 @@ void set_vol() {
     write_single_register(amp_dual, 0x4C, vol_register);  //Write to amps
     vol_old = vol;
   }
+}
+
+int get_int(uint8_t msb, uint8_t lsb) { //todo optimize away
+  return (msb << 8) & lsb;
+}
+
+float get_float( const float inFloat ) { //todo optimize away
+   float retVal;
+   char *floatToConvert = ( char* ) & inFloat;
+   char *returnFloat = ( char* ) & retVal;
+
+   // swap the bytes into a temporary buffer
+   returnFloat[0] = floatToConvert[3];
+   returnFloat[1] = floatToConvert[2];
+   returnFloat[2] = floatToConvert[1];
+   returnFloat[3] = floatToConvert[0];
+
+   return retVal;
 }

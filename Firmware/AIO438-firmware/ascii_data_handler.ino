@@ -35,29 +35,35 @@ void ascii_data_handler() {
   }
 }
 
-void dump_eeprom() {
-  //todo?
+void dump_eeprom() { //todo formatting
+  for(int i = 0; i < 320; i += 16) {
+    read_eeprom(i, 16);
+    Serial.print(i);
+    Serial.print(" = ");
+    for(int j = 0; j < 16; j++) {
+      if(eeprom_buffer.as_bytes[j] < 16) {
+        Serial.print("0");
+      }
+      Serial.print(eeprom_buffer.as_bytes[j], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+  }
 }
 
 void dump_dsp() {
   //todo?
 }
 
-void get_status() { //todo error checking before displaying
+void get_status() { //todo error checking before displaying, check for completeness
   write_single_register(amp_dual, 0x78, 0x80);  //Clear all faults
 
   Serial.print(F("Model = "));
   Serial.println(model);
   Serial.print(F("Firmware version = "));
   Serial.println(firmware);
-  
   Serial.print(F("Hardware version = "));
   print_version_struct(factory_data.hw_version);
-  Serial.print(F("Firmware supports up to hardware version "));
-  Serial.println(hw_support_major);
-
-  Serial.print(F("Firmware supports up to bluetooth firmware version "));
-  Serial.println(bt_fw_support_major);
   Serial.print(F("Bluetooth firmware version = "));
   print_version_struct(factory_data.bt_fw_version);
 
@@ -92,7 +98,7 @@ void get_status() { //todo error checking before displaying
   //todo eeprom table report?
 }
 
-void print_version_struct(version_struct _struct) { //Print like 'major.minor.patch
+void print_version_struct(version_struct _struct) { //Print like "major.minor.patch"
   Serial.print(_struct.major);
   Serial.print(F("."));
   Serial.print(_struct.minor);
@@ -100,7 +106,7 @@ void print_version_struct(version_struct _struct) { //Print like 'major.minor.pa
   Serial.println(_struct.patch);
 }
 
-void get_status_amp(int amp) {
+void get_status_amp(int amp) { //todo extend?
   if (amp == amp_1) Serial.println(F("Status amp 1:"));
   if (amp == amp_2) Serial.println(F("Status amp 2:"));
 
