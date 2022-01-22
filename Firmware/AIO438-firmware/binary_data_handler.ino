@@ -30,9 +30,9 @@ void process_data() {
   }
 
   uint16_t incoming_crc = incoming_data._byte[incoming_data_count - 2] << 8 | incoming_data._byte[incoming_data_count - 1];
-  uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, incoming_data_count);
+  uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, actual_data_count);
   
-  if (incoming_crc == calculated_crc) { //todo report back?
+  if (incoming_crc != calculated_crc) { //todo report back?
     Serial.println("Invalid CRC"); //Todo remove serial printing
     Serial.print("Incoming CRC = ");
     Serial.println(incoming_crc, HEX);
@@ -49,9 +49,9 @@ void process_data() {
 
 void prepare_outgoing_data() {
   if (payload.function_code == 1) { //Write bytes function
-    outgoing_data_count = actual_data_count; //4 //Function_code, address and amount
+    outgoing_data_count = 4; //Function_code, address and amount
   } else if (payload.function_code == 2) { //Read bytes function
-    //outgoing_data_count = payload.with_addr.amount + 4; //todo correct return //Function_code, address, amount and data bytes
+    outgoing_data_count = payload.with_addr.amount + 4; //Function_code, address, amount and data bytes
   } else { //Function_code 3 and error_codes
     outgoing_data_count = 1; //Only function code
   }
@@ -59,8 +59,9 @@ void prepare_outgoing_data() {
   memcpy(&outgoing_data, &payload, outgoing_data_count);
 
   uint16_t crc = crc16_CCITT(outgoing_data, outgoing_data_count);
-  outgoing_data[++outgoing_data_count] = (crc << 8) & 0xFF;
-  outgoing_data[++outgoing_data_count] = crc & 0xFF;
+  outgoing_data_count += 2; //add crc bytes to count
+  outgoing_data[outgoing_data_count - 2] = (crc >> 8) & 0xFF; //Fill CRC
+  outgoing_data[outgoing_data_count - 1] = crc & 0xFF; //Fill CRC
 }
 
 void encode_outgoing_data() { //Outgoing data

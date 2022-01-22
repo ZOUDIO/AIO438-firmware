@@ -1,9 +1,4 @@
 bool load_eeprom() {
-  if (!detect_device(eeprom_ext)) {
-    Serial.println(F("Eeprom not found"));
-    return false;
-  }
-
   eeprom_get(factory_data);
   factory_data = eeprom_buffer.as_factory_data;
 
@@ -28,65 +23,65 @@ bool load_eeprom() {
     return false;
   }
 
+  return load_eeprom_user();
+}
+
+bool load_eeprom_user() {
   const uint16_t allocation_table_offset = offsetof(eeprom_layout, table);
   const uint8_t entry_size = sizeof(entry_struct);
 
-  for (int i = 0; i < 32; i++) { //todo: verbosity, hardcode 32?
+  Serial.println("Entry\tType\tAmp\tAddr\tSize\tCRC\tCalculated CRC"); //Print header
+
+  for (int i = 0; i < 2; i++) { //todo: verbosity, hardcode 32?
     uint16_t entry_offset = allocation_table_offset + entry_size * i;
     read_eeprom(entry_offset, entry_size);
     entry_struct entry = eeprom_buffer.as_entry;
 
+    if (entry.type == 0xFF) { //Empty entry
+      continue; //Jump to next for-loop iteration
+    }
+
     uint16_t address_int = get_int(entry.address_msb, entry.address_lsb);
     uint16_t size_int = get_int(entry.size_msb, entry.size_lsb);
     uint16_t crc_int = get_int(entry.crc_msb, entry.crc_lsb);
-    
-    Serial.print(F("Entry "));
+    uint16_t crc_calculated = calculate_crc(address_int, size_int);
+
     Serial.print(i);
-    if (entry.type == 0xFF) {
-      Serial.println(F(" is empty"));
-      continue; //Jump to next for-loop iteration
-    } else if (entry.type == static_cast<uint8_t>(entry_type_enum::system_variables)) {
-      Serial.println(F(" contains system variables"));
-    } else if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
-      Serial.println(F(" contains dsp default"));
-    } else if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_eq_off)) {
-      Serial.println(F(" contains dsp eq on"));
-    } else if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_eq_on)) {
-      Serial.println(F(" contains dsp eq off"));
-    } else {
-      Serial.println(F(" contains unknown type"));
-      return false;
-    }
-
-    Serial.print(F("Address = "));
+    Serial.print('\t');
+    Serial.print(entry.type);
+    Serial.print('\t');
+    Serial.print(entry.amp);
+    Serial.print('\t');
     Serial.print(address_int);
-    Serial.print(F(", size = "));
-    Serial.println(size_int);
+    Serial.print('\t');
+    Serial.print(size_int);
+    Serial.print('\t');
+    Serial.print("0x");
+    Serial.print(crc_int, HEX);
+    Serial.print('\t');
+    Serial.print("0x");
+    Serial.println(crc_calculated, HEX);
 
-    if(size_int > 10000) {
-      Serial.println("Block too large");
-      return false;
-    }
-
-    uint16_t calculated_crc = calculate_crc(address_int, size_int); //todo pack into general function?
-    if (calculated_crc != crc_int) {
+    if (crc_int != crc_calculated) {
       Serial.println(F("Invalid CRC"));
-      Serial.print(F("Calculated CRC = "));
-      Serial.println(calculated_crc, HEX);
-      Serial.print(F("Stored CRC = "));
-      Serial.println(crc_int, HEX);
-      return false;
+      //return false;
     }
+
+    continue;
 
     if (entry.type == static_cast<uint8_t>(entry_type_enum::system_variables)) {
       read_eeprom(address_int, size_int);
       user = eeprom_buffer.as_user_data;
+      user.vol_start = swap_float(user.vol_start);
+      user.vol_max = swap_float(user.vol_max);
+      user.power_low = swap_float(user.power_low);
+      user.power_shutdown = swap_float(user.power_shutdown);
     } else if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
-      load_dsp(address_int, size_int, entry.amp);
+      //load_dsp(address_int, size_int, entry.amp);
     } //todo, load eq's (how?)
   }
 
-  return true; //Loading succesful
+  return true;
 }
 
 void load_dsp(int start_reg, int amount, byte amp) {
@@ -100,14 +95,14 @@ void load_dsp(int start_reg, int amount, byte amp) {
         delay(r.param);
         break;
       case cfg_meta_burst:
-          burst_amount = r.param + 1; //Register plus data
-          read_eeprom(i + 2, burst_amount); //Get bytes from eeprom
-          write_multiple_registers(amp, eeprom_buffer.as_bytes, burst_amount);
-          i += burst_amount; //Move past register and data
-          if (i % 2 != 0) {
-            i++; //todo simplify, improve
-          }
-          break;
+        burst_amount = r.param + 1; //Register plus data
+        read_eeprom(i + 2, burst_amount); //Get bytes from eeprom
+        write_multiple_registers(amp, eeprom_buffer.as_bytes, burst_amount);
+        i += burst_amount; //Move past register and data
+        if (i % 2 != 0) {
+          i++; //todo simplify, improve
+        }
+        break;
       default:
         write_single_register(amp, r.command, r.param);
         break;
@@ -121,12 +116,13 @@ void load_dsp(int start_reg, int amount, byte amp) {
 }
 
 uint16_t calculate_crc(int start_reg, int amount) {
-  uint8_t end_reg = start_reg + amount;
-  crc.restart();
+  uint32_t end_reg = start_reg + amount;
+  crc.reset();
   crc.setStartXOR(0xFFFF); //Matches CCITT guidelines
-  for (uint16_t i = start_reg; i < end_reg; i++) {
+  for (uint32_t i = start_reg; i < end_reg; i += page_size) { //todo optimize
     read_eeprom(i, page_size); //Read one page
-    crc.add(eeprom_buffer.as_bytes, min(page_size, end_reg - i)); //Add a maximum of one page at a time
+    int add_amount = min(page_size, end_reg - i); //Add a maximum of one page at a time
+    crc.add(eeprom_buffer.as_bytes, add_amount);
   }
   return crc.getCRC();
 }

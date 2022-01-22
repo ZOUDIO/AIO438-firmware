@@ -17,7 +17,7 @@
   - remove unions, use memcpy?
   - pass by reference instead of value?
   - Improve error reporting to master
-  - Check for naming consistency
+  - Check for naming consistency and clarity
   - Clean up comments
   - Put msbs/lsbs in structs/unions
   - Use more approriate file types and constants(?)
@@ -39,9 +39,9 @@ const char model[] = "AIO438"; //Todo: put/get in/from eeprom
 const char firmware[] = "0.2.0";
 
 //Can to pass to functions
-int amp_dual = 0; //Write to both amps, todo: pack in enum?
-int amp_1 = 1;
-int amp_2 = 2;
+const int amp_dual = 0; //Write to both amps, todo: pack in enum?
+const int amp_1 = 1;
+const int amp_2 = 2;
 const bool verbose = true;
 
 //PurePathConsole constants
@@ -159,11 +159,16 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
   Serial.println(F("Booting..."));
   digitalWrite(vreg_sleep, HIGH);         //Set buckconverter to normal operation
 
+  if (!detect_device(eeprom_ext)) {
+    Serial.println(F("Eeprom not found"));
+    return;
+  }
+
   eeprom_loaded = load_eeprom();
 
   if (/*eeprom_loaded*/ true) {                    //If eeprom can be loaded succes todo
     digitalWrite(expansion_en, HIGH);       //Enable power to expansion connector
-    
+
     if (/*user.bt_enabled*/ true) {
       digitalWrite(bt_enable, HIGH);      //Enable BT module
     }
@@ -224,13 +229,13 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
 
 void disable_system() {
   set_led("OFF");
-  Serial.println(F("Off"));
-  Serial.flush();
   digitalWrite(bt_enable, LOW);
   digitalWrite(amp_1_pdn, LOW);
   digitalWrite(amp_2_pdn, LOW);
   digitalWrite(expansion_en, LOW);
   delay(500);                       //Wait for everything to power off
+  Serial.println(F("Off"));
+  Serial.flush();
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
   attachPinChangeInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial todo null pointer function?, update lib?
   attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
@@ -280,20 +285,20 @@ void set_vol() {
   }
 }
 
-int get_int(uint8_t msb, uint8_t lsb) { //todo optimize away
-  return (msb << 8) & lsb;
+uint16_t get_int(uint8_t msb, uint8_t lsb) { //todo optimize away or generalize at least
+  return (msb << 8) | lsb;
 }
 
-float get_float( const float inFloat ) { //todo optimize away
-   float retVal;
-   char *floatToConvert = ( char* ) & inFloat;
-   char *returnFloat = ( char* ) & retVal;
+float swap_float ( const float inFloat ) { //Todo; do by reference
+  float retVal;
+  char *floatToConvert = ( char* ) & inFloat;
+  char *returnFloat = ( char* ) & retVal;
 
-   // swap the bytes into a temporary buffer
-   returnFloat[0] = floatToConvert[3];
-   returnFloat[1] = floatToConvert[2];
-   returnFloat[2] = floatToConvert[1];
-   returnFloat[3] = floatToConvert[0];
+  // swap the bytes into a temporary buffer
+  returnFloat[0] = floatToConvert[3];
+  returnFloat[1] = floatToConvert[2];
+  returnFloat[2] = floatToConvert[1];
+  returnFloat[3] = floatToConvert[0];
 
-   return retVal;
+  return retVal;
 }

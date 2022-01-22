@@ -12,12 +12,11 @@ void serial_monitor() {
       temp_buffer[temp_buffer_count] = incoming_byte; //Put byte in buffer
       temp_buffer_count++;                         //Move to next byte
     } else if (incoming_byte == '\n') {           
-      temp_buffer[temp_buffer_count] = '\0';               //Terminate the string
+      temp_buffer[temp_buffer_count++] = '\0';               //Terminate the string
       for (int i = 0; i < temp_buffer_count; i++) {       //Copy binary data to char array
         incoming_data._char[i] = toupper(temp_buffer[i]);  //Make uppercase
       }
       ascii_data_handler();
-      memset(incoming_data._char, 0, array_size); //todo: should not be necessary, find out
       temp_buffer_count = 0;
     } else if (incoming_byte > 31 && incoming_byte < 123)  {  //Only allow printable characters
       if (temp_buffer_count < array_size) {                    //Prevent overflow

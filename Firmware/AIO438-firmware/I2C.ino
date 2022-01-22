@@ -8,6 +8,11 @@ bool detect_device(int addr) {
 }
 
 void read_eeprom(int reg, int amount) { //Read bytes from eeprom
+  if (reg + amount > eeprom_size) {
+    Serial.println("Eeprom read blocked");
+    return;    
+  }
+
   Wire.beginTransmission(eeprom_ext);
   Wire.write(reg >> 8);   // MSB
   Wire.write(reg & 255);  // LSB
@@ -24,14 +29,14 @@ void write_eeprom_setup(int reg, int amount, byte data[]) { //Write buffer to ee
   byte amount_current_page = min(amount, amount_available); //Only write what fits on the current page
   write_eeprom(reg, amount_current_page, data);
 
-  Serial.print("Writing at "); //todo remove
-  Serial.println(reg);
-  Serial.print("Amount = ");
-  Serial.println(amount);
-
-  for (int i = 0; i < amount; i++) {
-    Serial.println(data[i]);
-  }
+//  Serial.print("Writing at "); //todo remove
+//  Serial.println(reg);
+//  Serial.print("Amount = ");
+//  Serial.println(amount);
+//
+//  for (int i = 0; i < amount; i++) {
+//    Serial.println(data[i]);
+//  }
 
   byte amount_next_page = amount - amount_current_page;
   if (amount_next_page > 0) { //If there is data remaining
@@ -40,6 +45,11 @@ void write_eeprom_setup(int reg, int amount, byte data[]) { //Write buffer to ee
 }
 
 void write_eeprom(int reg, int amount, byte data[]) { //Write bytes to eeprom
+  if (reg + amount > eeprom_size) {
+    Serial.println("Eeprom write blocked");
+    return;    
+  }
+  
   Wire.beginTransmission(eeprom_ext);
   Wire.write(reg >> 8);   // MSB
   Wire.write(reg & 255);  // LSB
@@ -74,10 +84,10 @@ void write_registers(byte amp, byte data[], byte amount) {  //Write values to re
   Wire.endTransmission();
 }
 
-int read_register(int amp, byte reg) {  //Read register value
-  Wire.beginTransmission(amp);
+int read_register(int amp_addr, byte reg) {  //Read register value
+  Wire.beginTransmission(amp_addr);
   Wire.write(reg);
   Wire.endTransmission();
-  Wire.requestFrom(amp, 1);
+  Wire.requestFrom(amp_addr, 1);
   return Wire.read();
 }

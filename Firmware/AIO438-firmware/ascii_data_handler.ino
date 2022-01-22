@@ -25,23 +25,28 @@ void ascii_data_handler() {
   } else if (!strcmp(command, "DUMP")) {
     command = strtok (NULL, " ");
     if (!strcmp(command, "EEPROM")) {
-      dump_eeprom();
+      long end_reg = strtol(strtok (NULL, " "), NULL, 0);
+      dump_eeprom(end_reg);
     } else if (!strcmp(command, "DSP")) {
       dump_dsp();
     }
   } else {  //If command is not recognized
-    Serial.print(F("nAck: "));
-    Serial.println(command);
+    Serial.println(F("nAck: "));
+    for (int i = 0; i < 20; i++) {
+      Serial.println(incoming_data._byte[i]);
+    }
+    //Serial.println(incoming_data._char);
   }
 }
 
-void dump_eeprom() { //todo formatting
-  for(int i = 0; i < 320; i += 16) {
+void dump_eeprom(long end_reg) { //todo formatting
+  Serial.println("Offset\t00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F"); //Print header
+  for (int i = 0; i < end_reg; i += 16) {
     read_eeprom(i, 16);
-    Serial.print(i);
-    Serial.print(" = ");
-    for(int j = 0; j < 16; j++) {
-      if(eeprom_buffer.as_bytes[j] < 16) {
+    Serial.print(i, HEX);
+    Serial.print('\t');
+    for (int j = 0; j < 16; j++) {
+      if (eeprom_buffer.as_bytes[j] < 16) {
         Serial.print("0");
       }
       Serial.print(eeprom_buffer.as_bytes[j], HEX);
@@ -91,8 +96,10 @@ void get_status() { //todo error checking before displaying, check for completen
   Serial.println(user.power_shutdown);
 
   Serial.println();
-  get_status_amp(amp_1);
-  get_status_amp(amp_2);
+  Serial.println(F("Status amp 1:"));
+  get_status_amp(amp_1_addr);
+  Serial.println(F("Status amp 2:"));
+  get_status_amp(amp_2_addr);
 
   Serial.println();
   //todo eeprom table report?
@@ -106,10 +113,7 @@ void print_version_struct(version_struct _struct) { //Print like "major.minor.pa
   Serial.println(_struct.patch);
 }
 
-void get_status_amp(int amp) { //todo extend?
-  if (amp == amp_1) Serial.println(F("Status amp 1:"));
-  if (amp == amp_2) Serial.println(F("Status amp 2:"));
-
+void get_status_amp(int amp) { //todo extend? or change to pure register reporting
   byte reg39h = read_register(amp, 0x39);
   if (bitRead(reg39h, 0)) Serial.println(F("Invalid sampling rate"));
   if (bitRead(reg39h, 1)) Serial.println(F("Invalid SCLK"));
