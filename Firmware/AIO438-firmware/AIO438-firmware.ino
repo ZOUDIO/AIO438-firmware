@@ -21,6 +21,7 @@
   - Clean up comments
   - Put msbs/lsbs in structs/unions
   - Use more approriate file types and constants(?)
+  - Check function input constraints
 */
 
 #include "src/ArduinoLibraryWire/Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
@@ -36,7 +37,7 @@
 #include "eeprom_layout.h"    //Struct definitions for eeprom storage
 
 const char model[] = "AIO438"; //Todo: put/get in/from eeprom
-const char firmware[] = "0.2.0";
+const char firmware[] = "1.0.0";
 
 //Can to pass to functions
 const int amp_dual = 0; //Write to both amps, todo: pack in enum?
@@ -129,7 +130,7 @@ void setup() { //Todo: move pinmodes to after eeprom reading?
   rot.begin();
 
   //todo: extend static_asserts
-  static_assert(sizeof(entry_struct) == 16, "Entry_struct size has changed");
+  static_assert(sizeof(entry_struct) == 48, "Entry_struct size has changed");
   static_assert(sizeof(system_variables) == 17, "System_variables size has changed");
   static_assert(offsetof(eeprom_layout, table) == 128, "Allocation_table offset has changed");
 
@@ -233,7 +234,7 @@ void disable_system() {
   digitalWrite(amp_1_pdn, LOW);
   digitalWrite(amp_2_pdn, LOW);
   digitalWrite(expansion_en, LOW);
-  delay(500);                       //Wait for everything to power off
+  delay(500);                       //Wait for everything to power off todo test
   Serial.println(F("Off"));
   Serial.flush();
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep

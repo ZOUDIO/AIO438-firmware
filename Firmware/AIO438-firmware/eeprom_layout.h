@@ -12,14 +12,15 @@ enum class entry_type_enum { //Determines how the entry data is handled
 
 struct entry_struct {
   uint8_t type; //Check against entry_type_enum
+  uint8_t amp; //0 = all amps
   uint8_t address_msb;
   uint8_t address_lsb;
   uint8_t size_msb;
   uint8_t size_lsb;
   uint8_t crc_msb;
   uint8_t crc_lsb;
-  uint8_t amp; //0 = all amps
-  uint8_t rfu[8]; //Pad to 16 bytes
+  char name[32];
+  uint8_t rfu[8]; //Pad to 48 bytes
 };
 
 struct allocation_table {

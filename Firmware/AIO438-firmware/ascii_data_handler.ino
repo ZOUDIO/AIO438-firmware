@@ -31,23 +31,20 @@ void ascii_data_handler() {
       dump_dsp();
     }
   } else {  //If command is not recognized
-    Serial.println(F("nAck: "));
-    for (int i = 0; i < 20; i++) {
-      Serial.println(incoming_data._byte[i]);
-    }
-    //Serial.println(incoming_data._char);
+    Serial.print(F("nAck: "));
+    Serial.println(incoming_data._char);
   }
 }
 
 void dump_eeprom(long end_reg) { //todo formatting
-  Serial.println("Offset\t00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F"); //Print header
+  Serial.println("Offset\t00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15"); //Print header
   for (int i = 0; i < end_reg; i += 16) {
     read_eeprom(i, 16);
-    Serial.print(i, HEX);
+    Serial.print(i);
     Serial.print('\t');
     for (int j = 0; j < 16; j++) {
-      if (eeprom_buffer.as_bytes[j] < 16) {
-        Serial.print("0");
+      if (eeprom_buffer.as_bytes[j] < 16) { //If single digit
+        Serial.print("0");                  //Pad to dual digit for consistency
       }
       Serial.print(eeprom_buffer.as_bytes[j], HEX);
       Serial.print(" ");
@@ -78,22 +75,22 @@ void get_status() { //todo error checking before displaying, check for completen
   Serial.println(user.amp_2_enabled);
   Serial.print(F("Bluetooth enabled = "));
   Serial.println(user.bt_enabled);
-
-  Serial.print(F("Volume (dB) = "));
-  Serial.println(vol);
   Serial.print(F("Start volume enabled = "));
   Serial.println(user.vol_start_enabled);
+
   Serial.print(F("Start volume (dB) = "));
   Serial.println(user.vol_start);
   Serial.print(F("Max volume (dB) = "));
   Serial.println(user.vol_max);
+  Serial.print(F("Volume (dB) = "));
+  Serial.println(vol);
 
-  Serial.print(F("Voltage (V) = "));
-  Serial.println(power_voltage);
   Serial.print(F("Power low (V) = "));
   Serial.println(user.power_low);
   Serial.print(F("Power shutdown (V) = "));
   Serial.println(user.power_shutdown);
+  Serial.print(F("Voltage (V) = "));
+  Serial.println(power_voltage);
 
   Serial.println();
   Serial.println(F("Status amp 1:"));

@@ -30,7 +30,7 @@ bool load_eeprom_user() {
   const uint16_t allocation_table_offset = offsetof(eeprom_layout, table);
   const uint8_t entry_size = sizeof(entry_struct);
 
-  Serial.println("Entry\tType\tAmp\tAddr\tSize\tCRC\tCalculated CRC"); //Print header
+  Serial.println("Entry\tType\tAmp\tAddr\tSize\tStored CRC\tCalculated CRC\tName"); //Print header
 
   for (int i = 0; i < 2; i++) { //todo: verbosity, hardcode 32?
     uint16_t entry_offset = allocation_table_offset + entry_size * i;
@@ -47,31 +47,37 @@ bool load_eeprom_user() {
     uint16_t crc_calculated = calculate_crc(address_int, size_int);
 
     Serial.print(i);
-    Serial.print('\t');
+    Serial.print("\t");
     Serial.print(entry.type);
-    Serial.print('\t');
+    Serial.print("\t");
     Serial.print(entry.amp);
-    Serial.print('\t');
+    Serial.print("\t");
     Serial.print(address_int);
-    Serial.print('\t');
+    Serial.print("\t");
     Serial.print(size_int);
-    Serial.print('\t');
+    Serial.print("\t");
     Serial.print("0x");
     Serial.print(crc_int, HEX);
-    Serial.print('\t');
+    Serial.print("\t\t");
     Serial.print("0x");
-    Serial.println(crc_calculated, HEX);
+    Serial.print(crc_calculated, HEX);
+    Serial.print("\t\t");
+    Serial.println(entry.name);
 
     if (crc_int != crc_calculated) {
       Serial.println(F("Invalid CRC"));
       //return false;
     }
 
-    continue;
-
     if (entry.type == static_cast<uint8_t>(entry_type_enum::system_variables)) {
+      memset(&user, 0xFF, sizeof(user)); //Default all bits to 1
       read_eeprom(address_int, size_int);
-      user = eeprom_buffer.as_user_data;
+
+      //If saved data is bigger than local struct, ignore excess data.
+      //If local struct is bigger than saved data, fill local struct partly
+      memcpy(&user, eeprom_buffer.as_bytes, size_int); //Copy incoming data into payload struct
+
+      //Swap byte order (saved data is big endian, processor is little endian)
       user.vol_start = swap_float(user.vol_start);
       user.vol_max = swap_float(user.vol_max);
       user.power_low = swap_float(user.power_low);
@@ -116,13 +122,14 @@ void load_dsp(int start_reg, int amount, byte amp) {
 }
 
 uint16_t calculate_crc(int start_reg, int amount) {
-  uint32_t end_reg = start_reg + amount;
+  uint16_t end_reg = start_reg + amount;
   crc.reset();
   crc.setStartXOR(0xFFFF); //Matches CCITT guidelines
-  for (uint32_t i = start_reg; i < end_reg; i += page_size) { //todo optimize
+  for (uint16_t i = start_reg; i < end_reg; i += page_size) { //todo optimize
     read_eeprom(i, page_size); //Read one page
-    int add_amount = min(page_size, end_reg - i); //Add a maximum of one page at a time
+    uint8_t add_amount = min(page_size, end_reg - i); //Add a maximum of one page at a time
     crc.add(eeprom_buffer.as_bytes, add_amount);
+    wdt_reset();
   }
   return crc.getCRC();
 }

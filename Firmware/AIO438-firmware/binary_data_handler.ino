@@ -3,9 +3,32 @@ const byte special_marker = 253; //Value 253, 254 and 255 can be sent as 253 0, 
 const byte start_marker = 254;
 const byte end_marker = 255;
 
-void binary_data_handler() { //Once data is received, it will be handled in the following order
+void binary_data_handler() {
   decode_incoming_data();
-  process_data();
+  
+  actual_data_count = incoming_data_count - 2; //Size excluding CRC16
+  if (actual_data_count <= 0) { //If there is no actual data
+    return; //Drop message
+  }
+
+  uint16_t incoming_crc = incoming_data._byte[incoming_data_count - 2] << 8 | incoming_data._byte[incoming_data_count - 1];
+  uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, actual_data_count);
+  
+  if (incoming_crc != calculated_crc) { //todo report back via serial
+    bitSet(payload.function_code, 8); //Set MSB (indicates error)
+    
+    Serial.println("Invalid CRC"); //Todo remove serial printing
+    Serial.print("Incoming CRC = ");
+    Serial.println(incoming_crc, HEX);
+    Serial.print("Calculated CRC = ");
+    Serial.println(calculated_crc, HEX);
+    return; //Drop message
+  }
+
+  binary_command_handler();
+  prepare_outgoing_data();
+  encode_outgoing_data();
+  send_data();
   apply_settings();
 }
 
@@ -22,36 +45,11 @@ void decode_incoming_data() {
   }
 }
 
-void process_data() {
-  actual_data_count = incoming_data_count - 2; //Size excluding CRC16
-
-  if (actual_data_count <= 0) { //If there is no actual data
-    return; //Drop message
-  }
-
-  uint16_t incoming_crc = incoming_data._byte[incoming_data_count - 2] << 8 | incoming_data._byte[incoming_data_count - 1];
-  uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, actual_data_count);
-  
-  if (incoming_crc != calculated_crc) { //todo report back?
-    Serial.println("Invalid CRC"); //Todo remove serial printing
-    Serial.print("Incoming CRC = ");
-    Serial.println(incoming_crc, HEX);
-    Serial.print("Calculated CRC = ");
-    Serial.println(calculated_crc, HEX);
-    return; //Drop message
-  }
-
-  binary_command_handler();
-  prepare_outgoing_data();
-  encode_outgoing_data();
-  send_data();
-}
-
 void prepare_outgoing_data() {
   if (payload.function_code == 1) { //Write bytes function
     outgoing_data_count = 4; //Function_code, address and amount
   } else if (payload.function_code == 2) { //Read bytes function
-    outgoing_data_count = payload.with_addr.amount + 4; //Function_code, address, amount and data bytes
+    outgoing_data_count = 4 + payload.with_addr.amount; //Function_code, address, amount and data bytes
   } else { //Function_code 3 and error_codes
     outgoing_data_count = 1; //Only function code
   }
