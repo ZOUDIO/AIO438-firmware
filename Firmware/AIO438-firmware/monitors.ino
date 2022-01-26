@@ -31,7 +31,7 @@ void temperature_monitor() { //Check every second if the amplifier temperature i
   static unsigned long lastTemp;
   if ((millis() - lastTemp) > 1000) {
     write_single_register(amp_dual, 0x78, 0x80);  //Reset fault register
-    byte temp_register = (read_register(amp_1, 0x73) | read_register(amp_2, 0x73)); //Take the highest temperature of both amplifiers
+    byte temp_register = (read_register(amp_1_addr, 0x73) | read_register(amp_2_addr, 0x73)); //Take the highest temperature of both amplifiers
     //Register 0x73: bit 1 = 112*C, bit 2 = 122*C, bit 3 = 134 *C, bit 4 = 146 *C
     if (bitRead(temp_register, 3)) Serial.println(F("High temperature: 146 *C"));
     else if (bitRead(temp_register, 2)) Serial.println(F("High temperature: 134 *C"));
@@ -63,6 +63,7 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
   byte rotDirection = rot.process();
   if (rotDirection == DIR_CW) {             //Clockwise: increase volume
     vol++;
+    Serial.println("ik heb oe deur");
   } else if (rotDirection == DIR_CCW) {     //Counter-clockwise: decrease volume
     vol--;
     vol_reduction = 0;                       //Do not try to recover the reduction anymore
@@ -77,8 +78,10 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
   } else if (rot_button.clicks == 3) {      //Short triple press: previous track
     Serial.println(F("Previous track"));
   } else if (rot_button.clicks == -1) {     //Long press: enter pairing
+    send_pulse(bt_pio_19, 400); //todo_now check
     Serial.println(F("Enter pairing"));
   } else if (rot_button.clicks == -2) {     //Double press and hold: reset pairing list
+    send_pulse(bt_pio_19, 900); //todo_now check
     Serial.println(F("Reset pairing list"));
   }
 }
@@ -115,7 +118,10 @@ void analog_gain_monitor() {
 }
 
 void tws_monitor() { //Check TrueWirelessStereo button
-  //Not implemented yet
+  tws_button.Update(); //Implement actions
+  if (rot_button.clicks) {
+    Serial.println(F("TWS not implemented yet")); //todo: enable
+  }
 }
 
 void eq_monitor() { //Check EQ button

@@ -25,6 +25,6 @@
 #define amp_2_addr    0x4C
 #define eeprom_ext    0x50
 
-//EEPROM properties
+//Eeprom properties
 #define eeprom_size   32768
 #define page_size     64

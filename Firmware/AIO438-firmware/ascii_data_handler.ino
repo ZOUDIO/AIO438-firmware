@@ -30,10 +30,22 @@ void ascii_data_handler() {
     } else if (!strcmp(command, "DSP")) {
       dump_dsp();
     }
+  } else if (!strcmp(command, "CLEAR")) {
+    clear_eeprom(128); //Don't include factory settings
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
     Serial.println(incoming_data._char);
   }
+}
+
+void clear_eeprom(uint16_t start_reg) {
+  Serial.println(F("Clearing eeprom..."));
+  uint8_t empty_array[page_size];
+  memset(empty_array, 0xFF, sizeof(empty_array));
+  for(uint16_t i = start_reg; i < eeprom_size; i+= page_size) {
+    write_eeprom(i, page_size, empty_array);
+  }
+  Serial.println(F("Eeprom cleared"));
 }
 
 void dump_eeprom(long end_reg) { //todo formatting
@@ -64,6 +76,13 @@ void get_status() { //todo error checking before displaying, check for completen
   Serial.println(model);
   Serial.print(F("Firmware version = "));
   Serial.println(firmware);
+  Serial.print(F("Eeprom loaded = "));
+  Serial.println(eeprom_loaded);
+
+  if (!eeprom_loaded) {
+    return; //Remainder of information is not useful if eeprom is not loaded
+  }
+
   Serial.print(F("Hardware version = "));
   print_version_struct(factory_data.hw_version);
   Serial.print(F("Bluetooth firmware version = "));
@@ -82,13 +101,13 @@ void get_status() { //todo error checking before displaying, check for completen
   Serial.println(user.vol_start);
   Serial.print(F("Max volume (dB) = "));
   Serial.println(user.vol_max);
-  Serial.print(F("Volume (dB) = "));
-  Serial.println(vol);
-
   Serial.print(F("Power low (V) = "));
   Serial.println(user.power_low);
   Serial.print(F("Power shutdown (V) = "));
   Serial.println(user.power_shutdown);
+
+  Serial.print(F("Volume (dB) = "));
+  Serial.println(vol);
   Serial.print(F("Voltage (V) = "));
   Serial.println(power_voltage);
 
@@ -99,7 +118,8 @@ void get_status() { //todo error checking before displaying, check for completen
   get_status_amp(amp_2_addr);
 
   Serial.println();
-  //todo eeprom table report?
+
+  load_eeprom_user(verbose);
 }
 
 void print_version_struct(version_struct _struct) { //Print like "major.minor.patch"

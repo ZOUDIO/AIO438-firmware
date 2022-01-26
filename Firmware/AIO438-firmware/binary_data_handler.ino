@@ -58,8 +58,8 @@ void prepare_outgoing_data() {
 
   uint16_t crc = crc16_CCITT(outgoing_data, outgoing_data_count);
   outgoing_data_count += 2; //add crc bytes to count
-  outgoing_data[outgoing_data_count - 2] = (crc >> 8) & 0xFF; //Fill CRC
-  outgoing_data[outgoing_data_count - 1] = crc & 0xFF; //Fill CRC
+  outgoing_data[outgoing_data_count - 2] = (crc >> 8) & 0xFF; //Fill msb crc
+  outgoing_data[outgoing_data_count - 1] = crc & 0xFF; //Fill lsb crc
 }
 
 void encode_outgoing_data() { //Outgoing data
@@ -85,7 +85,7 @@ void send_data() {
 void apply_settings() {
   if (apply_settings_flag) {
     Serial.println(F("New settings applied"));
-    load_eeprom(); //todo check
+    load_eeprom_user(!verbose); //todo check
     apply_settings_flag = false;
   }
 }

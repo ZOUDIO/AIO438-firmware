@@ -24,7 +24,7 @@ struct entry_struct {
 };
 
 struct allocation_table {
-  entry_struct entry[32];
+  entry_struct entry[16];
 };
 
 struct system_variables {

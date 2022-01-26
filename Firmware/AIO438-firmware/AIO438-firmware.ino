@@ -19,7 +19,6 @@
   - Improve error reporting to master
   - Check for naming consistency and clarity
   - Clean up comments
-  - Put msbs/lsbs in structs/unions
   - Use more approriate file types and constants(?)
   - Check function input constraints
 */
@@ -111,25 +110,13 @@ Rotary rot = Rotary(rot_a, rot_b);    //Encoder
 CRC16 crc;
 
 void setup() { //Todo: move pinmodes to after eeprom reading?
-  pinMode(expansion_en, OUTPUT);
-  pinMode(vreg_sleep, OUTPUT);
-  pinMode(bt_enable, OUTPUT);
-  pinMode(amp_1_pdn, OUTPUT);
-  pinMode(amp_2_pdn, OUTPUT);
-  pinMode(bt_pio_19, OUTPUT);
-  pinMode(bt_pio_20, OUTPUT);
-  pinMode(bt_pio_21, OUTPUT);
-  pinMode(bt_pio_22, OUTPUT);
-  pinMode(led_green, OUTPUT);
-  pinMode(led_red, OUTPUT);
-  pinMode(0, INPUT_PULLUP); //Pull up the RX pin to avoid accidental interrupts
-  //Remainder of GPIO are default pinmode (INPUT)
+  pinMode(vreg_sleep, OUTPUT);  //Hard-wired
+  pinMode(0, INPUT_PULLUP);     //Pull up the RX pin to avoid accidental interrupts
   Serial.begin(38400);
   Wire.begin();
   Wire.setClock(400000);
   rot.begin();
 
-  //todo: extend static_asserts
   static_assert(sizeof(entry_struct) == 48, "Entry_struct size has changed");
   static_assert(sizeof(system_variables) == 17, "System_variables size has changed");
   static_assert(offsetof(eeprom_layout, table) == 128, "Allocation_table offset has changed");
@@ -144,9 +131,10 @@ void loop() {
   while (system_enabled) {
     serial_monitor();
     power_monitor();
-    if (false /*eeprom_loaded*/) { //todo: check functionality
+    if (eeprom_loaded) { //todo: check functionality
       temperature_monitor();
       analog_gain_monitor();
+      aux_level_monitor();
       rotary_monitor();
       tws_monitor();
       eq_monitor();
@@ -157,7 +145,7 @@ void loop() {
 
 void enable_system() { //Enable or disable system todo: look at sequence (also i2s)
   while (digitalRead(rot_sw) == HIGH) {}; //Continue when rotary switch is released
-  Serial.println(F("Booting..."));
+  Serial.println(F("Powering on..."));
   digitalWrite(vreg_sleep, HIGH);         //Set buckconverter to normal operation
 
   if (!detect_device(eeprom_ext)) {
@@ -166,57 +154,7 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
   }
 
   eeprom_loaded = load_eeprom();
-
-  if (/*eeprom_loaded*/ true) {                    //If eeprom can be loaded succes todo
-    digitalWrite(expansion_en, HIGH);       //Enable power to expansion connector
-
-    if (/*user.bt_enabled*/ true) {
-      digitalWrite(bt_enable, HIGH);      //Enable BT module
-    }
-
-    digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
-    digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
-    delay(50);
-    if (!detect_device(amp_1_addr)) {
-      Serial.println(F("Amplifier 1 not found"));
-      return;
-    }
-    if (!detect_device(amp_2_addr)) {
-      Serial.println(F("Amplifier 2 not found"));
-      return;
-    }
-
-    write_single_register(amp_2, 0x6A, B1011);   //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
-    delay(750);                                 //Wait for I2S to start todo: revisit boot time
-
-    //Overwrite these settings
-    write_single_register(amp_dual, 0x76, B10000);    //Enable over-temperature auto recovery
-    write_single_register(amp_dual, 0x77, B111);      //Enable Cycle-By-Cycle over-current protection
-    write_single_register(amp_dual, 0x53, B1100000);  //Set Class D bandwith to 175Khz
-    write_single_register(amp_dual, 0x51, B1110111);  //Set automute time to 10.66 seconds
-
-    if (user.vol_start_enabled) {
-      vol = user.vol_start; //Set vol if enabled
-    }
-    vol_old = -104;         //Set vol_old out of range to force set_vol to run
-    set_vol();              //Set volume
-
-    analog_gain_old = 32;   //Set analog_gain_old out of range to force analog_gain_monitor to run
-    analog_gain_monitor();  //Set analog gain
-
-    eq_state = eq_state_old = digitalRead(eq_sw);     //Enable if EQ switch is closed todo verify
-    eq_enabled = eq_enabled_old = digitalRead(eq_sw);  //Enable if EQ switch is closed
-
-    //todo: play startup tone
-
-    //Set enabled amps into play mode
-    if (user.amp_1_enabled) {
-      write_single_register(amp_1, 0x03, B11);
-    }
-    if (user.amp_2_enabled) {
-      write_single_register(amp_2, 0x03, B11);
-    }
-  } else {
+  if (!eeprom_loaded) {
     Serial.println(F("Failed to load settings from memory"));
     Serial.println(F("Amplifier outputs are disabled"));
   }
@@ -231,10 +169,10 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
 void disable_system() {
   set_led("OFF");
   digitalWrite(bt_enable, LOW);
+  delay(1000);  //Wait for everything to power off todo test
   digitalWrite(amp_1_pdn, LOW);
   digitalWrite(amp_2_pdn, LOW);
   digitalWrite(expansion_en, LOW);
-  delay(500);                       //Wait for everything to power off todo test
   Serial.println(F("Off"));
   Serial.flush();
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
@@ -246,6 +184,19 @@ void disable_system() {
   wdt_enable(WDTO_8S);              //Enable 8 seconds watchdog timer todo enable
   detachPinChangeInterrupt(0);       //Wake up from serial
   detachPinChangeInterrupt(rot_sw);  //Wake up from rotary switch
+}
+
+void set_outputs() { //Remainder of GPIO are default pinmode (INPUT)
+  pinMode(expansion_en, OUTPUT);
+  pinMode(bt_enable, OUTPUT);
+  pinMode(amp_1_pdn, OUTPUT);
+  pinMode(amp_2_pdn, OUTPUT);
+  pinMode(bt_pio_19, OUTPUT);
+  pinMode(bt_pio_20, OUTPUT);
+  pinMode(bt_pio_21, OUTPUT);
+  pinMode(bt_pio_22, OUTPUT);
+  pinMode(led_green, OUTPUT);
+  pinMode(led_red, OUTPUT);
 }
 
 void exit_powerdown() {} //Empty ISR to exit powerdown
