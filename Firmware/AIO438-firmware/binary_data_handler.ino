@@ -63,13 +63,13 @@ void prepare_outgoing_data() {
 }
 
 void encode_outgoing_data() { //Outgoing data
-  temp_buffer_count = 0;                                                //Iterate through the whole array
-  for (byte i = 0; i < outgoing_data_count; i++) {                      //Go through whole outgoing_data array
-    if (outgoing_data[i] >= special_marker) {                           //If data is 253, 254 or 255
+  temp_buffer_count = 0;                                                  //Iterate through the whole array
+  for (byte i = 0; i < outgoing_data_count; i++) {                        //Go through whole outgoing_data array
+    if (outgoing_data[i] >= special_marker) {                             //If data is 253, 254 or 255
       temp_buffer[temp_buffer_count] = special_marker;                    //Set current byte to 253
-      temp_buffer_count++;                                              //Go to next byte
-      temp_buffer[temp_buffer_count] = outgoing_data[i] - special_marker;  //Set value to (value - special_marker)
-    } else {                                                          //Else:
+      temp_buffer_count++;                                                //Go to next byte
+      temp_buffer[temp_buffer_count] = outgoing_data[i] - special_marker; //Set value to (value - special_marker)
+    } else {                                                              //Else:
       temp_buffer[temp_buffer_count] = outgoing_data[i];                  //Add data to buffer directly
     }
     temp_buffer_count++;

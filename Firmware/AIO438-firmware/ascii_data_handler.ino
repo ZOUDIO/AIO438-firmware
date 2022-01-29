@@ -34,7 +34,7 @@ void ascii_data_handler() {
     clear_eeprom(128); //Don't include factory settings
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
-    Serial.println(incoming_data._char);
+    Serial.println(command);
   }
 }
 

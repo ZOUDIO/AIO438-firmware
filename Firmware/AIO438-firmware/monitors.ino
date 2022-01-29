@@ -63,7 +63,6 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
   byte rotDirection = rot.process();
   if (rotDirection == DIR_CW) {             //Clockwise: increase volume
     vol++;
-    Serial.println("ik heb oe deur");
   } else if (rotDirection == DIR_CCW) {     //Counter-clockwise: decrease volume
     vol--;
     vol_reduction = 0;                       //Do not try to recover the reduction anymore

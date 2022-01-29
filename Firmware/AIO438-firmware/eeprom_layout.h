@@ -5,29 +5,18 @@ enum class entry_type_enum { //Determines how the entry data is handled
   dsp_eq_on,    //Only used when EQ is enabled
 };
 
-//struct { //Used during runtime to know which entry contains the eq dsp instructions
-//  uint8_t dsp_eq_off_entry_index;
-//  uint8_t dsp_eq_on_entry_index;
-//} dsp_eq;
-
-struct entry_struct {
+struct entry_struct {  
+  uint16_t crc;
+  uint16_t size;
+  
   uint8_t type; //Check against entry_type_enum
   uint8_t amp; //0 = all amps
-  uint8_t address_msb;
-  uint8_t address_lsb;
-  uint8_t size_msb;
-  uint8_t size_lsb;
-  uint8_t crc_msb;
-  uint8_t crc_lsb;
   char name[32];
-  uint8_t rfu[8]; //Pad to 48 bytes
-};
-
-struct allocation_table {
-  entry_struct entry[16];
+  uint8_t rfu[10]; //Pad to 48 bytes
 };
 
 struct system_variables {
+  uint16_t signature; //Should be 0x5555
   uint8_t amp_1_enabled : 1;
   uint8_t amp_2_enabled : 1;
   uint8_t bt_enabled : 1;
@@ -58,7 +47,11 @@ struct factory_data_struct {
 
 struct eeprom_layout {
   factory_data_struct factory_data;
-  uint8_t rfu[119]; //Pad to 128 bytes
-  allocation_table table;
-  //Remainder of eeprom is reserved for data storage
+  uint8_t rfu_1[119]; //Pad to 128 bytes
+  
+  system_variables user;
+  uint8_t rfu_2[109]; //Pad to 128 bytes
+  
+  entry_struct first_entry;
+  //Remainder of eeprom is reserved for dsp settings
 };

@@ -62,12 +62,11 @@ union { //Used for type conversion
   cfg_reg as_cfg_reg;
 } eeprom_buffer;
 
-struct {
+struct { //Date comes in big-endian
   uint8_t function_code; //todo: make enum
   union {
     struct {
-      uint8_t address_msb;
-      uint8_t address_lsb;
+      uint16_t address;
       uint8_t amount;
       uint8_t data[64];
     } with_addr;
@@ -117,9 +116,10 @@ void setup() { //Todo: move pinmodes to after eeprom reading?
   Wire.setClock(400000);
   rot.begin();
 
-  static_assert(sizeof(entry_struct) == 48, "Entry_struct size has changed");
-  static_assert(sizeof(system_variables) == 17, "System_variables size has changed");
-  static_assert(offsetof(eeprom_layout, table) == 128, "Allocation_table offset has changed");
+  //static_assert(sizeof(entry_struct) == 48, "Entry_struct size has changed");
+  //static_assert(sizeof(system_variables) == 21, "System_variables size has changed");
+  //static_assert(offsetof(eeprom_layout, user) == 128, "User offset has changed");
+  //static_assert(offsetof(eeprom_layout, first_entry) == 256, "First_entry offset has changed");
 
   vol = user.vol_start; //Set once
 }
@@ -237,8 +237,16 @@ void set_vol() {
   }
 }
 
-uint16_t get_int(uint8_t msb, uint8_t lsb) { //todo optimize away or generalize at least
-  return (msb << 8) | lsb;
+uint16_t swap_int ( const uint16_t inFloat ) { //Todo; do by reference
+  uint16_t retVal;
+  char *floatToConvert = ( char* ) & inFloat;
+  char *returnFloat = ( char* ) & retVal;
+
+  // swap the bytes into a temporary buffer
+  returnFloat[0] = floatToConvert[1];
+  returnFloat[1] = floatToConvert[0];
+
+  return retVal;
 }
 
 float swap_float ( const float inFloat ) { //Todo; do by reference
