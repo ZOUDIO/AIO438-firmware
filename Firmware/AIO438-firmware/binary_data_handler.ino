@@ -15,13 +15,7 @@ void binary_data_handler() {
   uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, actual_data_count);
   
   if (incoming_crc != calculated_crc) { //todo report back via serial
-    bitSet(payload.function_code, 8); //Set MSB (indicates error)
-    
-    Serial.println("Invalid CRC"); //Todo remove serial printing
-    Serial.print("Incoming CRC = ");
-    Serial.println(incoming_crc, HEX);
-    Serial.print("Calculated CRC = ");
-    Serial.println(calculated_crc, HEX);
+    bitSet(payload.function_code, 8); //Set MSB (indicates error), todo return invalid CRC error
     return; //Drop message
   }
 
@@ -51,7 +45,7 @@ void prepare_outgoing_data() {
   } else if (payload.function_code == 2) { //Read bytes function
     outgoing_data_count = 4 + payload.with_addr.amount; //Function_code, address, amount and data bytes
   } else { //Function_code 3 and error_codes
-    outgoing_data_count = 1; //Only function code
+    outgoing_data_count = 1; //Only function code todo expand with return info
   }
 
   memcpy(&outgoing_data, &payload, outgoing_data_count);
@@ -85,7 +79,8 @@ void send_data() {
 void apply_settings() {
   if (apply_settings_flag) {
     Serial.println(F("New settings applied"));
-    load_eeprom_user(!verbose); //todo check
+    load_system_variables();
+    load_dsp_entries(!verbose); //todo check
     apply_settings_flag = false;
   }
 }

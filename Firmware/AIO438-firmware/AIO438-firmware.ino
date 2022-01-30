@@ -39,7 +39,7 @@ const char model[] = "AIO438"; //Todo: put/get in/from eeprom
 const char firmware[] = "1.0.0";
 
 //Can to pass to functions
-const int amp_dual = 0; //Write to both amps, todo: pack in enum?
+const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
 const int amp_1 = 1;
 const int amp_2 = 2;
 const bool verbose = true;
@@ -74,14 +74,14 @@ struct { //Date comes in big-endian
   };
 } payload;
 
-const byte array_size = sizeof(payload) + 2;  //Payload plus 2 CRC bytes
+const byte array_size = sizeof(payload) + 2;  //Payload plus CRC16
 byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 byte outgoing_data[array_size];   //Data before encoding
 
 union {
   byte _byte[array_size]; //Get as byte array
   char _char[array_size]; //Get as char array
-} incoming_data; //todo, with reinterpret_cast?
+} incoming_data; //todo, with reinterpret_cast?, look at temp, incoming, outgoing etc shared memory space
 
 byte incoming_data_count;
 byte outgoing_data_count;
@@ -101,7 +101,7 @@ float vol_reduction;
 float power_voltage;
 char analog_gain;
 char analog_gain_old;
-bool eeprom_loaded; //Set if eeprom settings are loaded succesfully
+bool eeprom_loaded;
 
 ClickButton rot_button(rot_sw, HIGH); //Encoder switch
 ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
@@ -116,10 +116,10 @@ void setup() { //Todo: move pinmodes to after eeprom reading?
   Wire.setClock(400000);
   rot.begin();
 
-  //static_assert(sizeof(entry_struct) == 48, "Entry_struct size has changed");
-  //static_assert(sizeof(system_variables) == 21, "System_variables size has changed");
-  //static_assert(offsetof(eeprom_layout, user) == 128, "User offset has changed");
-  //static_assert(offsetof(eeprom_layout, first_entry) == 256, "First_entry offset has changed");
+  static_assert(sizeof(entry_struct) == 64, "Entry_struct size has changed");
+  static_assert(sizeof(system_variables) == 19, "System_variables size has changed");
+  static_assert(offsetof(eeprom_layout, user) == 128, "User offset has changed");
+  static_assert(offsetof(eeprom_layout, first_entry) == 256, "First_entry offset has changed");
 
   vol = user.vol_start; //Set once
 }
@@ -131,7 +131,7 @@ void loop() {
   while (system_enabled) {
     serial_monitor();
     power_monitor();
-    if (eeprom_loaded) { //todo: check functionality
+    if (eeprom_loaded) { //Todo check if safe
       temperature_monitor();
       analog_gain_monitor();
       aux_level_monitor();
@@ -167,9 +167,10 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
 }
 
 void disable_system() {
+  Serial.println("Powering off...");
   set_led("OFF");
   digitalWrite(bt_enable, LOW);
-  delay(1000);  //Wait for everything to power off todo test
+  delay(1100);  //Wait for everything to power off
   digitalWrite(amp_1_pdn, LOW);
   digitalWrite(amp_2_pdn, LOW);
   digitalWrite(expansion_en, LOW);
@@ -228,10 +229,10 @@ void set_led(String color, int _delay) { //Set led color and wait
 
 void set_vol() {
   if (vol != vol_old) {
-    vol = max(vol, -103.5);       //Set absolute minimum
-    vol = min(vol, user.vol_max); //Set user-defined maximum
-    vol = min(vol, 24);           //Set absolute maximum
-    byte vol_register = 48 - 2 * vol;         //Convert decibel to register value
+    vol = max(vol, -103.5);           //Set absolute minimum
+    vol = min(vol, user.vol_max);     //Set user-defined maximum
+    vol = min(vol, 24);               //Set absolute maximum
+    byte vol_register = 48 - 2 * vol; //Convert decibel to register value
     write_single_register(amp_dual, 0x4C, vol_register);  //Write to amps
     vol_old = vol;
   }

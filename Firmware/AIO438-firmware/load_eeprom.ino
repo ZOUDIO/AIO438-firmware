@@ -1,42 +1,11 @@
 bool load_eeprom() {
-  //Start loading factory data
-  eeprom_get(factory_data);
-  factory_data = eeprom_buffer.as_factory_data;
-
-  if (factory_data.signature != 0x5555) {
-    Serial.println(F("Invalid factory data")); //Todo: offer to clear memory and sign or something?
+  if (!load_factory_data()) {
     return false;
   }
 
-  if (factory_data.hw_version.major != 1) { //This firmware supports hardware versions 1.x.x
-    Serial.print(F("Hardware version "));
-    Serial.print(factory_data.hw_version.major);
-    Serial.println(F(" not supported"));
-    return false;
-  }
-  set_outputs(); //Now that hardware is known, outputs can be enabled safely
+  load_system_variables();
 
-  if (factory_data.bt_fw_version.major != 1) { //This firmware supports bluetooth firmware versions 1.x.x
-    Serial.print(F("Bluetooth firmware version "));
-    Serial.print(factory_data.hw_version.major);
-    Serial.println(F(" not supported"));
-    return false;
-  }
-
-  //Start loading user data
-  eeprom_get(user);
-  user = eeprom_buffer.as_user_data;
-
-  user.vol_start = swap_float(user.vol_start);
-  user.vol_max = swap_float(user.vol_max);
-  user.power_low = swap_float(user.power_low);
-  user.power_shutdown = swap_float(user.power_shutdown);
-
-  if (user.signature != 0x5555) {
-    reset_variables();
-    Serial.println("Default system variables loaded");
-  }
-
+  //Start system setup
   digitalWrite(expansion_en, HIGH);   //Enable power to expansion connector
 
   if (user.bt_enabled) {
@@ -57,8 +26,12 @@ bool load_eeprom() {
 
   write_single_register(amp_2, 0x6A, 0b1011);  //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
 
-  if (!load_eeprom_user(verbose)) {
-    return false;
+  if (!load_dsp_entries(!verbose)) {
+    write_single_register(amp_dual, 0x02, 0b1000001);   //1SPW modulation, BTL output, 768k Fsw
+    write_single_register(amp_dual, 0x53, 0b1100000);   //Set Class D bandwith to 175Khz
+    write_single_register(amp_dual, 0x76, 0b10000);     //Enable over-temperature auto recovery
+    write_single_register(amp_dual, 0x77, 0b111);       //Enable Cycle-By-Cycle over-current protection
+    Serial.println(F("Default DSP settings loaded"));
   }
 
   if (user.vol_start_enabled) {
@@ -86,111 +59,112 @@ bool load_eeprom() {
   return true;
 }
 
-bool load_eeprom_user(bool _verbose) {
+bool load_factory_data() {
+  eeprom_get(factory_data);
+  factory_data = eeprom_buffer.as_factory_data;
 
-  entry_struct entry; //To load entry's into
-  uint16_t entry_offset = offsetof(eeprom_layout, first_entry);
-  uint8_t entry_size = sizeof(entry_struct);
-
-  if (_verbose) {
-    Serial.println("Type\tAmp\tSize\tCRC\tName"); //Print header
+  if (factory_data.signature != 0x5555) {
+    Serial.println(F("Invalid factory data")); //Todo: offer to clear memory and sign or something?
+    return false;
   }
 
-  while (true) {
-
-    read_eeprom(entry_offset, entry_size);
-    entry = eeprom_buffer.as_entry;
-
-    entry.crc = swap_int(entry.crc);
-    entry.size = swap_int(entry.size);
-
-    if (_verbose) {
-      Serial.print(entry.type);
-      Serial.print("\t");
-      Serial.print(entry.amp);
-      Serial.print("\t");
-      Serial.print(entry.size);
-      Serial.print("\t");
-      Serial.print("0x");
-      Serial.print(entry.crc, HEX);
-      Serial.print("\t");
-      Serial.println(entry.name);
-    }
-    
-    uint16_t crc_calculated = calculate_crc(entry_offset + entry_size, entry.size);
-    if (entry.crc != crc_calculated) {
-      Serial.print(F("Invalid CRC, calculated value = "));
-      Serial.print("0x");
-      Serial.println(crc_calculated, HEX);
-      return false;
-    }
-
-    return true; //Swap order below and so
-
-    if (_verbose) { //Verbose only prints, does not execute
-      continue; //Jump to next for-loop iteration
-    }
-
+  if (factory_data.hw_version.major != 1) { //This firmware supports hardware versions 1.x.x
+    Serial.print(F("Hardware version "));
+    Serial.print(factory_data.hw_version.major);
+    Serial.println(F(" not supported"));
+    return false;
   }
+  set_outputs(); //Now that hardware is known, outputs can be enabled safely
 
-  //
-  //    if (entry.type < 1) { //Only types 0 and 1 are supported currently
-  //      uint16_t crc_calculated = calculate_crc(address_int, size_int);
-  //      if (crc_int != crc_calculated) {
-  //        Serial.print(F("Invalid CRC, calculated value = "));
-  //        Serial.print("0x");
-  //        Serial.println(crc_calculated, HEX);
-  //        return false;
-  //      }
-  //    }
-  //
-  //    if (entry.type == static_cast<uint8_t>(entry_type_enum::system_variables)) {
-  //      memset(&user, 0xFF, sizeof(user)); //Default all bits to 1
-  //      read_eeprom(address_int, size_int);
-  //
-  //      //If saved data is bigger than local struct, ignore excess data.
-  //      //If local struct is bigger than saved data, fill local struct partly
-  //      memcpy(&user, eeprom_buffer.as_bytes, size_int); //Copy data into user runtime struct
-  //
-  //      //Swap byte order (saved data is big endian, processor is little endian)
-  //      user.vol_start = swap_float(user.vol_start);
-  //      user.vol_max = swap_float(user.vol_max);
-  //      user.power_low = swap_float(user.power_low);
-  //      user.power_shutdown = swap_float(user.power_shutdown);
-  //
-  //      system_variables_loaded = true;
-  //    } else if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
-  //      //load_dsp(address_int, size_int, entry.amp);
-  //      dsp_loaded = true;
-  //    } //todo, load eq's (how?)
-  //  }
-  //
-  //  if (!system_variables_loaded) {
-  //    reset_variables();
-  //    Serial.println(F("Default system variables loaded"));
-  //  }
-  //
-  //  if (!dsp_loaded) {   //Overwrite these settings todo copy to configtool
-  //    write_single_register(amp_dual, 0x02, 0b1000001);   //1SPW modulation, BTL output, 768k Fsw
-  //    write_single_register(amp_dual, 0x53, 0b1100000);   //Set Class D bandwith to 175Khz
-  //    write_single_register(amp_dual, 0x76, 0b10000);     //Enable over-temperature auto recovery
-  //    write_single_register(amp_dual, 0x77, 0b111);       //Enable Cycle-By-Cycle over-current protection
-  //    Serial.println(F("Default DSP settings loaded"));
-  //  }
+  if (factory_data.bt_fw_version.major != 1) { //This firmware supports bluetooth firmware versions 1.x.x
+    Serial.print(F("Bluetooth firmware version "));
+    Serial.print(factory_data.hw_version.major);
+    Serial.println(F(" not supported"));
+    return false;
+  }
 
   return true;
 }
 
-void reset_variables() {
-  user.amp_1_enabled = true;
-  user.amp_2_enabled = true;
-  user.bt_enabled = true;
-  user.vol_start_enabled = true;
-  user.vol_start = -30;
-  user.vol_max = 0;
-  user.power_low = 0;
-  user.power_shutdown = 0;
-  vol_reduction = 0;
+void load_system_variables() { //Start loading user data
+  eeprom_get(user);
+  user = eeprom_buffer.as_user_data;
+
+  user.vol_start = swap_float(user.vol_start);
+  user.vol_max = swap_float(user.vol_max);
+  user.power_low = swap_float(user.power_low);
+  user.power_shutdown = swap_float(user.power_shutdown);
+
+  if (user.signature != 0x5555) {
+    user.amp_1_enabled = true;
+    user.amp_2_enabled = true;
+    user.bt_enabled = true;
+    user.vol_start_enabled = true;
+    user.vol_start = -30;
+    user.vol_max = 0;
+    user.power_low = 0;
+    user.power_shutdown = 0;
+    vol_reduction = 0;
+    Serial.println(F("Default system variables loaded"));
+  }
+}
+
+bool load_dsp_entries(bool _verbose) {
+  const uint8_t entry_size = sizeof(entry_struct);
+  uint16_t entry_offset = offsetof(eeprom_layout, first_entry);
+  bool dsp_loaded = false, header_printed = false;
+
+  while ((entry_offset + entry_size) < eeprom_size) { //Read until the end of eeprom, unless loop breaks itself earlier
+
+    read_eeprom(entry_offset, entry_size);
+    entry_struct entry = eeprom_buffer.as_entry;
+
+    entry.crc = swap_int(entry.crc);
+    entry.size = swap_int(entry.size);
+
+    if (entry.size < 2 || entry.size > eeprom_size) { //Invalid or empty
+      break; //Exit loop
+    }
+
+    if (_verbose && !header_printed) {
+      Serial.println(F("Type\tAmp\tSize\tCRC\tName")); //Print header once
+      header_printed = true;
+    }
+
+    if (_verbose) {
+      Serial.print(entry.type);
+      Serial.print(F("\t"));
+      Serial.print(entry.amp);
+      Serial.print(F("\t"));
+      Serial.print(entry.size);
+      Serial.print(F("\t"));
+      Serial.print(F("0x"));
+      Serial.print(entry.crc, HEX);
+      Serial.print(F("\t"));
+      Serial.println(entry.name);
+    }
+
+    uint16_t crc_calculated = calculate_crc(entry_offset + entry_size, entry.size);
+    if (entry.crc != crc_calculated) {
+      Serial.print(F("Invalid CRC, calculated value = "));
+      Serial.print(F("0x"));
+      Serial.println(crc_calculated, HEX);
+      return false;
+    }
+
+    if (!_verbose) { //Verbose only prints, does not execute
+      if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
+        //load_dsp(address_int, size_int, entry.amp); //todo enable
+        dsp_loaded = true;
+      } else {
+        Serial.println(F("Function code not supported"));
+      }
+    }
+
+    entry_offset = entry_offset + entry_size + entry.size; //Jump to next entry
+  }
+
+  return dsp_loaded;
 }
 
 void load_dsp(int start_reg, int amount, byte amp) {

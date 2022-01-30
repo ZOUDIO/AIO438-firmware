@@ -1,5 +1,4 @@
 enum class entry_type_enum { //Determines how the entry data is handled
-  system_variables,
   dsp_default,  //Always used
   dsp_eq_off,   //Only used when EQ is disabled
   dsp_eq_on,    //Only used when EQ is enabled
@@ -8,11 +7,10 @@ enum class entry_type_enum { //Determines how the entry data is handled
 struct entry_struct {  
   uint16_t crc;
   uint16_t size;
-  
   uint8_t type; //Check against entry_type_enum
   uint8_t amp; //0 = all amps
-  char name[32];
-  uint8_t rfu[10]; //Pad to 48 bytes
+  char name[48];
+  uint8_t rfu[10]; //Pad to 64 bytes
 };
 
 struct system_variables {
@@ -21,6 +19,7 @@ struct system_variables {
   uint8_t amp_2_enabled : 1;
   uint8_t bt_enabled : 1;
   uint8_t vol_start_enabled : 1; //If false: remember volume through on/off cycles
+  uint8_t rfu_bits : 4;
   float vol_start;
   float vol_max;
   float power_low;

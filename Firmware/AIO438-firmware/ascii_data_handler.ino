@@ -22,16 +22,21 @@ void ascii_data_handler() {
     send_pulse(pio, duration);
   } else if (!strcmp(command, "STATUS")) {
     get_status();
-  } else if (!strcmp(command, "DUMP")) {
+  } else if (!strcmp(command, "EEPROM")) {
     command = strtok (NULL, " ");
-    if (!strcmp(command, "EEPROM")) {
+    if (!strcmp(command, "DUMP")) {
       long end_reg = strtol(strtok (NULL, " "), NULL, 0);
       dump_eeprom(end_reg);
-    } else if (!strcmp(command, "DSP")) {
-      dump_dsp();
+    } else if (!strcmp(command, "CLEAR")) {
+      command = strtok (NULL, " ");
+      if (command == NULL) {  //If there is a command: set volume
+        clear_eeprom(128); //Don't include factory settings
+      } else {
+        long start_reg = strtol(strtok (NULL, " "), NULL, 0);
+        clear_eeprom(start_reg);
+      }
+
     }
-  } else if (!strcmp(command, "CLEAR")) {
-    clear_eeprom(128); //Don't include factory settings
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
     Serial.println(command);
@@ -42,7 +47,7 @@ void clear_eeprom(uint16_t start_reg) {
   Serial.println(F("Clearing eeprom..."));
   uint8_t empty_array[page_size];
   memset(empty_array, 0xFF, sizeof(empty_array));
-  for(uint16_t i = start_reg; i < eeprom_size; i+= page_size) {
+  for (uint16_t i = start_reg; i < eeprom_size; i += page_size) {
     write_eeprom(i, page_size, empty_array);
   }
   Serial.println(F("Eeprom cleared"));
@@ -73,7 +78,7 @@ void get_status() { //todo error checking before displaying, check for completen
   write_single_register(amp_dual, 0x78, 0x80);  //Clear all faults
 
   Serial.print(F("Model = "));
-  Serial.println(model);
+  Serial.println(model); //Todo retrieve from eeprom
   Serial.print(F("Firmware version = "));
   Serial.println(firmware);
   Serial.print(F("Eeprom loaded = "));
@@ -118,8 +123,7 @@ void get_status() { //todo error checking before displaying, check for completen
   get_status_amp(amp_2_addr);
 
   Serial.println();
-
-  load_eeprom_user(verbose);
+  load_dsp_entries(verbose);
 }
 
 void print_version_struct(version_struct _struct) { //Print like "major.minor.patch"
