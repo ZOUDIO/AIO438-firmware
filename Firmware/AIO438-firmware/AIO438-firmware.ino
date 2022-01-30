@@ -77,6 +77,7 @@ struct { //Date comes in big-endian
 const byte array_size = sizeof(payload) + 2;  //Payload plus CRC16
 byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 byte outgoing_data[array_size];   //Data before encoding
+uint16_t runtime_crc[32];
 
 union {
   byte _byte[array_size]; //Get as byte array

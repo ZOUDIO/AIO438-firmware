@@ -113,9 +113,15 @@ bool load_dsp_entries(bool _verbose) {
   const uint8_t entry_size = sizeof(entry_struct);
   uint16_t entry_offset = offsetof(eeprom_layout, first_entry);
   bool dsp_loaded = false, header_printed = false;
+  memset(runtime_crc, 0, sizeof(runtime_crc));
 
-  while ((entry_offset + entry_size) < eeprom_size) { //Read until the end of eeprom, unless loop breaks itself earlier
+  for (int i = 0; i < 32; i++) { //Read until the end of eeprom, unless loop breaks itself earlier
 
+    if((entry_offset + entry_size) > eeprom_size) {
+      Serial.println("Eeprom size limit reached");
+      break;
+    }
+    
     read_eeprom(entry_offset, entry_size);
     entry_struct entry = eeprom_buffer.as_entry;
 
@@ -127,11 +133,13 @@ bool load_dsp_entries(bool _verbose) {
     }
 
     if (_verbose && !header_printed) {
-      Serial.println(F("Type\tAmp\tSize\tCRC\tName")); //Print header once
+      Serial.println(F("Index\tType\tAmp\tSize\tCRC\tName")); //Print header once
       header_printed = true;
     }
 
     if (_verbose) {
+      Serial.print(i);
+      Serial.print(F("\t"));
       Serial.print(entry.type);
       Serial.print(F("\t"));
       Serial.print(entry.amp);
@@ -150,11 +158,13 @@ bool load_dsp_entries(bool _verbose) {
       Serial.print(F("0x"));
       Serial.println(crc_calculated, HEX);
       return false;
+    } else { //Add to array so it can be checked by the configtool
+      runtime_crc[i] = crc_calculated;
     }
 
     if (!_verbose) { //Verbose only prints, does not execute
       if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
-        //load_dsp(address_int, size_int, entry.amp); //todo enable
+        load_dsp(entry_offset + entry_size, entry.size, entry.amp); //todo enable
         dsp_loaded = true;
       } else {
         Serial.println(F("Function code not supported"));

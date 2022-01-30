@@ -29,15 +29,6 @@ void write_eeprom_setup(int reg, int amount, byte data[]) { //Write buffer to ee
   byte amount_current_page = min(amount, amount_available); //Only write what fits on the current page
   write_eeprom(reg, amount_current_page, data);
 
-//  Serial.print("Writing at "); //todo remove
-//  Serial.println(reg);
-//  Serial.print("Amount = ");
-//  Serial.println(amount);
-//
-//  for (int i = 0; i < amount; i++) {
-//    Serial.println(data[i]);
-//  }
-
   byte amount_next_page = amount - amount_current_page;
   if (amount_next_page > 0) { //If there is data remaining
     write_eeprom(reg + amount_current_page, amount_next_page, data + amount_current_page); //Write what remains on the next page

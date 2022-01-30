@@ -5,7 +5,7 @@ const byte end_marker = 255;
 
 void binary_data_handler() {
   decode_incoming_data();
-  
+
   actual_data_count = incoming_data_count - 2; //Size excluding CRC16
   if (actual_data_count <= 0) { //If there is no actual data
     return; //Drop message
@@ -13,7 +13,7 @@ void binary_data_handler() {
 
   uint16_t incoming_crc = incoming_data._byte[incoming_data_count - 2] << 8 | incoming_data._byte[incoming_data_count - 1];
   uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, actual_data_count);
-  
+
   if (incoming_crc != calculated_crc) { //todo report back via serial
     bitSet(payload.function_code, 8); //Set MSB (indicates error), todo return invalid CRC error
     return; //Drop message
@@ -26,7 +26,7 @@ void binary_data_handler() {
   apply_settings();
 }
 
-void decode_incoming_data() {  
+void decode_incoming_data() {
   incoming_data_count = 0;                        //Keeps track of how many data is received
   for (int i = 0; i < temp_buffer_count; i++) {   //Go through whole temp_buffer array
     byte x = temp_buffer[i];                     //Load byte
@@ -44,8 +44,12 @@ void prepare_outgoing_data() {
     outgoing_data_count = 4; //Function_code, address and amount
   } else if (payload.function_code == 2) { //Read bytes function
     outgoing_data_count = 4 + payload.with_addr.amount; //Function_code, address, amount and data bytes
-  } else { //Function_code 3 and error_codes
+  } else if (payload.function_code == 3) { //Read bytes function
     outgoing_data_count = 1; //Only function code todo expand with return info
+  } else if (payload.function_code == 4) { //Runtime CRC function
+    outgoing_data_count = 4 + sizeof(runtime_crc);
+  } else { //Error codes
+    outgoing_data_count = 1;
   }
 
   memcpy(&outgoing_data, &payload, outgoing_data_count);
@@ -76,11 +80,27 @@ void send_data() {
   Serial.write(end_marker);
 }
 
-void apply_settings() {
+void apply_settings() { //Todo restore old settings complete
   if (apply_settings_flag) {
-    Serial.println(F("New settings applied"));
+
     load_system_variables();
-    load_dsp_entries(!verbose); //todo check
+    load_dsp_entries(!verbose);
+    
+    //Todo duplicate code, integrate?
+    vol_old = -104;         //Set vol_old out of range to force set_vol to run
+    set_vol();              //Set volume
+
+    analog_gain_old = 32;   //Set analog_gain_old out of range to force analog_gain_monitor to run
+    analog_gain_monitor();  //Set analog gain
+
+    if (user.amp_1_enabled) {
+      write_single_register(amp_1, 0x03, 0b11);
+    }
+    if (user.amp_2_enabled) {
+      write_single_register(amp_2, 0x03, 0b11);
+    }
+
+    Serial.println(F("New settings applied"));
     apply_settings_flag = false;
   }
 }
