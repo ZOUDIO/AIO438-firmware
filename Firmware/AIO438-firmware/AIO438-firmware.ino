@@ -168,7 +168,7 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
 }
 
 void disable_system() {
-  Serial.println("Powering off...");
+  Serial.println(F("Powering off..."));
   set_led("OFF");
   digitalWrite(bt_enable, LOW);
   delay(1100);  //Wait for everything to power off

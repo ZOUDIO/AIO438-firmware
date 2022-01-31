@@ -9,7 +9,7 @@ bool detect_device(int addr) {
 
 void read_eeprom(int reg, int amount) { //Read bytes from eeprom
   if (reg + amount > eeprom_size) {
-    Serial.println("Eeprom read blocked");
+    Serial.println(F("Eeprom read blocked"));
     return;    
   }
 
@@ -37,7 +37,7 @@ void write_eeprom_setup(int reg, int amount, byte data[]) { //Write buffer to ee
 
 void write_eeprom(int reg, int amount, byte data[]) { //Write bytes to eeprom
   if (reg + amount > eeprom_size) {
-    Serial.println("Eeprom write blocked");
+    Serial.println(F("Eeprom write blocked"));
     return;    
   }
   

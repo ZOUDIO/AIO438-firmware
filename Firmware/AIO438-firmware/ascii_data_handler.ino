@@ -35,7 +35,6 @@ void ascii_data_handler() {
         long start_reg = strtol(strtok (NULL, " "), NULL, 0);
         clear_eeprom(start_reg);
       }
-
     }
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
@@ -54,17 +53,17 @@ void clear_eeprom(uint16_t start_reg) {
 }
 
 void dump_eeprom(long end_reg) { //todo formatting
-  Serial.println("Offset\t00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15"); //Print header
+  Serial.println(F("Offset\t00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15")); //Print header
   for (int i = 0; i < end_reg; i += 16) {
     read_eeprom(i, 16);
     Serial.print(i);
     Serial.print('\t');
     for (int j = 0; j < 16; j++) {
       if (eeprom_buffer.as_bytes[j] < 16) { //If single digit
-        Serial.print("0");                  //Pad to dual digit for consistency
+        Serial.print(F("0"));                  //Pad to dual digit for consistency
       }
       Serial.print(eeprom_buffer.as_bytes[j], HEX);
-      Serial.print(" ");
+      Serial.print(F(" "));
     }
     Serial.println();
   }
