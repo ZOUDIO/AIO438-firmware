@@ -80,35 +80,36 @@ void get_status() { //todo error checking before displaying, check for completen
   Serial.println(model); //Todo retrieve from eeprom
   Serial.print(F("Firmware version = "));
   Serial.println(firmware);
-  Serial.print(F("Eeprom loaded = "));
-  Serial.println(eeprom_loaded);
+  Serial.print(F("Full functionality = "));
+  Serial.println(full_functionality ? "true" : "false");
 
-  if (!eeprom_loaded) {
-    return; //Remainder of information is not useful if eeprom is not loaded
+  //Todo print only useful data
+  if (factory_data.signature == valid_signature) {
+    Serial.print(F("Hardware version = "));
+    println_version_struct(factory_data.hw_version);
+    Serial.print(F("Bluetooth firmware version = "));
+    println_version_struct(factory_data.bt_fw_version);
   }
 
-  Serial.print(F("Hardware version = "));
-  print_version_struct(factory_data.hw_version);
-  Serial.print(F("Bluetooth firmware version = "));
-  print_version_struct(factory_data.bt_fw_version);
+  if (user.signature == valid_signature) {
+    Serial.print(F("Amp 1 output = "));
+    Serial.println(amp_output_state_str[user.amp_1_output]);
+    Serial.print(F("Amp 2 output = "));
+    Serial.println(amp_output_state_str[user.amp_2_output]);
+    Serial.print(F("Bluetooth enabled = "));
+    Serial.println(user.bt_enabled ? "true" : "false");
+    Serial.print(F("Start volume enabled = "));
+    Serial.println(user.vol_start_enabled ? "true" : "false");
 
-  Serial.print(F("Amp 1 enabled = "));
-  Serial.println(user.amp_1_enabled);
-  Serial.print(F("Amp 2 enabled = "));
-  Serial.println(user.amp_2_enabled);
-  Serial.print(F("Bluetooth enabled = "));
-  Serial.println(user.bt_enabled);
-  Serial.print(F("Start volume enabled = "));
-  Serial.println(user.vol_start_enabled);
-
-  Serial.print(F("Start volume (dB) = "));
-  Serial.println(user.vol_start);
-  Serial.print(F("Max volume (dB) = "));
-  Serial.println(user.vol_max);
-  Serial.print(F("Power low (V) = "));
-  Serial.println(user.power_low);
-  Serial.print(F("Power shutdown (V) = "));
-  Serial.println(user.power_shutdown);
+    Serial.print(F("Start volume (dB) = "));
+    Serial.println(user.vol_start);
+    Serial.print(F("Max volume (dB) = "));
+    Serial.println(user.vol_max);
+    Serial.print(F("Power low (V) = "));
+    Serial.println(user.power_low);
+    Serial.print(F("Power shutdown (V) = "));
+    Serial.println(user.power_shutdown);
+  }
 
   Serial.print(F("Volume (dB) = "));
   Serial.println(vol);
@@ -125,7 +126,7 @@ void get_status() { //todo error checking before displaying, check for completen
   load_dsp_entries(verbose);
 }
 
-void print_version_struct(version_struct _struct) { //Print like "major.minor.patch"
+void println_version_struct(version_struct _struct) { //Print like "major.minor.patch"
   Serial.print(_struct.major);
   Serial.print(F("."));
   Serial.print(_struct.minor);

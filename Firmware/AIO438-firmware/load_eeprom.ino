@@ -1,38 +1,26 @@
-bool load_eeprom() {
-  if (!load_factory_data()) {
-    return false;
-  }
-
+void load_eeprom() {
   load_system_variables();
-
-  //Start system setup
-  digitalWrite(expansion_en, HIGH);   //Enable power to expansion connector
-
+  
   if (user.bt_enabled) {
     digitalWrite(bt_enable, HIGH);    //Enable BT module
   }
 
-  digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
-  digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
-  delay(10);
-  if (!detect_device(amp_1_addr)) {
-    Serial.println(F("Amplifier 1 not found"));
-    return false;
-  }
-  if (!detect_device(amp_2_addr)) {
-    Serial.println(F("Amplifier 2 not found"));
-    return false;
-  }
-
   write_single_register(amp_2, 0x6A, 0b1011);  //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
 
-  if (!load_dsp_entries(!verbose)) {
+  uint8_t entry_count = load_dsp_entries(!verbose);
+
+  if(invalid_entry_stored) { //Unknown state
+    return; //Do not continue with setting up the amps
+  }
+
+  if (entry_count == 0) { //If there were no entries
     write_single_register(amp_dual, 0x02, 0b1000001);   //1SPW modulation, BTL output, 768k Fsw
     write_single_register(amp_dual, 0x53, 0b1100000);   //Set Class D bandwith to 175Khz
-    write_single_register(amp_dual, 0x76, 0b10000);     //Enable over-temperature auto recovery
-    write_single_register(amp_dual, 0x77, 0b111);       //Enable Cycle-By-Cycle over-current protection
     Serial.println(F("Default DSP settings loaded"));
   }
+
+  write_single_register(amp_dual, 0x76, 0b10000);     //Enable over-temperature auto recovery
+  write_single_register(amp_dual, 0x77, 0b111);       //Enable Cycle-By-Cycle over-current protection
 
   if (user.vol_start_enabled) {
     vol = user.vol_start; //Set vol if enabled
@@ -43,43 +31,39 @@ bool load_eeprom() {
   analog_gain_old = 32;   //Set analog_gain_old out of range to force analog_gain_monitor to run
   analog_gain_monitor();  //Set analog gain
 
-  eq_state = eq_state_old = digitalRead(eq_sw);     //Enable if EQ switch is closed
-  eq_enabled = eq_enabled_old = digitalRead(eq_sw); //Enable if EQ switch is closed
+  set_amp_output_state(1, amp_1_addr, user.amp_1_output);
+  set_amp_output_state(2, amp_2_addr, user.amp_2_output);
+}
 
-  //Set enabled amps into play mode
-  if (user.amp_1_enabled) {
-    write_single_register(amp_1, 0x03, 0b11);
+void set_amp_output_state(uint8_t amp_index, uint8_t amp_addr, uint8_t output) { //Todo clean up
+  uint8_t current_state = read_register(amp_addr, 0x02); //Used as mask to keep current switching frequency and modulation scheme
+  if (output == static_cast<uint8_t>(amp_output_state::dual)) {
+    write_single_register(amp_index, 0x02, current_state | 0b000); //BTL mode
+  } else if (output == static_cast<uint8_t>(amp_output_state::single)) {
+    write_single_register(amp_index, 0x02, current_state | 0b100); //PBTL mode
+  } else {
+    write_single_register(amp_1, 0x03, 0); //Force deep sleep
+    return;
   }
-  if (user.amp_2_enabled) {
-    write_single_register(amp_2, 0x03, 0b11);
-  }
-
-  send_pulse(bt_pio_19, 400); //Play startup tone
-
-  return true;
+  write_single_register(amp_index, 0x03, 0b11); //Play mode
 }
 
 bool load_factory_data() {
   eeprom_get(factory_data);
   factory_data = eeprom_buffer.as_factory_data;
 
-  if (factory_data.signature != 0x5555) {
+  if (factory_data.signature != valid_signature) {
     Serial.println(F("Invalid factory data")); //Todo: offer to clear memory and sign or something?
     return false;
   }
-
+  
   if (factory_data.hw_version.major != 1) { //This firmware supports hardware versions 1.x.x
-    Serial.print(F("Hardware version "));
-    Serial.print(factory_data.hw_version.major);
-    Serial.println(F(" not supported"));
+    Serial.println(F("Hardware not supported"));
     return false;
   }
-  set_outputs(); //Now that hardware is known, outputs can be enabled safely
-
+  
   if (factory_data.bt_fw_version.major != 1) { //This firmware supports bluetooth firmware versions 1.x.x
-    Serial.print(F("Bluetooth firmware version "));
-    Serial.print(factory_data.hw_version.major);
-    Serial.println(F(" not supported"));
+    Serial.print(F("Bluetooth firmware not supported"));
     return false;
   }
 
@@ -95,33 +79,42 @@ void load_system_variables() { //Start loading user data
   user.power_low = swap_float(user.power_low);
   user.power_shutdown = swap_float(user.power_shutdown);
 
-  if (user.signature != 0x5555) {
-    user.amp_1_enabled = true;
-    user.amp_2_enabled = true;
+  if (user.signature != valid_signature) {
     user.bt_enabled = true;
     user.vol_start_enabled = true;
     user.vol_start = -30;
     user.vol_max = 0;
     user.power_low = 0;
     user.power_shutdown = 0;
-    vol_reduction = 0;
+    user.amp_1_output = static_cast<uint8_t>(amp_output_state::dual);
+    user.amp_2_output = static_cast<uint8_t>(amp_output_state::dual);
     Serial.println(F("Default system variables loaded"));
   }
+
+  uint8_t output_state_limit = static_cast<uint8_t>(amp_output_state::disable); //Limit range to 3, anything above 3 means disable
+  user.amp_1_output = min(user.amp_1_output, output_state_limit);
+  user.amp_2_output = min(user.amp_2_output, output_state_limit);
+
+  vol_reduction = 0;
+  
+  eq_state = eq_state_old = digitalRead(eq_sw);     //Enable if EQ switch is closed
+  eq_enabled = eq_enabled_old = digitalRead(eq_sw); //Enable if EQ switch is closed
 }
 
-bool load_dsp_entries(bool _verbose) {
+uint8_t load_dsp_entries(bool _verbose) {
   const uint8_t entry_size = sizeof(entry_struct);
   uint16_t entry_offset = offsetof(eeprom_layout, first_entry);
-  bool dsp_loaded = false, header_printed = false;
-  memset(runtime_crc, 0, sizeof(runtime_crc));
+  uint8_t entry_count = 0;
+  bool header_printed = false;
+  invalid_entry_stored = false;
 
   for (int i = 0; i < 32; i++) { //Read until the end of eeprom, unless loop breaks itself earlier
 
-    if((entry_offset + entry_size) > eeprom_size) {
+    if ((entry_offset + entry_size) > eeprom_size) {
       Serial.println(F("Eeprom size limit reached"));
       break;
     }
-    
+
     read_eeprom(entry_offset, entry_size);
     entry_struct entry = eeprom_buffer.as_entry;
 
@@ -157,24 +150,23 @@ bool load_dsp_entries(bool _verbose) {
       Serial.print(F("Invalid CRC, calculated value = "));
       Serial.print(F("0x"));
       Serial.println(crc_calculated, HEX);
+      invalid_entry_stored = true;
       return false;
-    } else { //Add to array so it can be checked by the configtool
-      runtime_crc[i] = crc_calculated;
     }
 
     if (!_verbose) { //Verbose only prints, does not execute
       if (entry.type == static_cast<uint8_t>(entry_type_enum::dsp_default)) {
-        load_dsp(entry_offset + entry_size, entry.size, entry.amp); //todo enable
-        dsp_loaded = true;
+        load_dsp(entry_offset + entry_size, entry.size, entry.amp);
+        entry_count++;
       } else {
-        Serial.println(F("Function code not supported"));
+        Serial.println(F("Entry type not supported"));
       }
     }
 
     entry_offset = entry_offset + entry_size + entry.size; //Jump to next entry
   }
 
-  return dsp_loaded;
+  return entry_count;
 }
 
 void load_dsp(int start_reg, int amount, byte amp) {
@@ -188,7 +180,7 @@ void load_dsp(int start_reg, int amount, byte amp) {
         delay(r.param);
         break;
       case cfg_meta_burst:
-        burst_amount = r.param + 1; //Register plus data
+        burst_amount = r.param; //Register plus data
         read_eeprom(i + 2, burst_amount); //Get bytes from eeprom
         write_multiple_registers(amp, eeprom_buffer.as_bytes, burst_amount);
         i += burst_amount; //Move past register and data

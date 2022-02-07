@@ -36,7 +36,7 @@
 #include "eeprom_layout.h"    //Struct definitions for eeprom storage
 
 const char model[] = "AIO438"; //Todo: put/get in/from eeprom
-const char firmware[] = "1.0.0";
+const char firmware[] = "2.0.0";
 
 //Can to pass to functions
 const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
@@ -47,6 +47,8 @@ const bool verbose = true;
 //PurePathConsole constants
 const byte cfg_meta_burst = 253;
 const byte cfg_meta_delay = 254;
+
+const uint16_t valid_signature = 0x5555;
 
 typedef struct {
   uint8_t command;
@@ -77,7 +79,6 @@ struct { //Date comes in big-endian
 const byte array_size = sizeof(payload) + 2;  //Payload plus CRC16
 byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 byte outgoing_data[array_size];   //Data before encoding
-uint16_t runtime_crc[32];
 
 union {
   byte _byte[array_size]; //Get as byte array
@@ -102,7 +103,8 @@ float vol_reduction;
 float power_voltage;
 char analog_gain;
 char analog_gain_old;
-bool eeprom_loaded;
+bool full_functionality;
+bool invalid_entry_stored;
 
 ClickButton rot_button(rot_sw, HIGH); //Encoder switch
 ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
@@ -118,7 +120,7 @@ void setup() { //Todo: move pinmodes to after eeprom reading?
   rot.begin();
 
   static_assert(sizeof(entry_struct) == 64, "Entry_struct size has changed");
-  static_assert(sizeof(system_variables) == 19, "System_variables size has changed");
+  static_assert(sizeof(system_variables) == 21, "System_variables size has changed");
   static_assert(offsetof(eeprom_layout, user) == 128, "User offset has changed");
   static_assert(offsetof(eeprom_layout, first_entry) == 256, "First_entry offset has changed");
 
@@ -128,11 +130,11 @@ void setup() { //Todo: move pinmodes to after eeprom reading?
 void loop() {
   disable_system();
   /* System will be in powerdown until interrupt occurs */
-  enable_system();
+  system_enabled = enable_system();
   while (system_enabled) {
     serial_monitor();
     power_monitor();
-    if (eeprom_loaded) { //Todo check if safe
+    if (full_functionality) {
       temperature_monitor();
       analog_gain_monitor();
       aux_level_monitor();
@@ -144,27 +146,48 @@ void loop() {
   }
 }
 
-void enable_system() { //Enable or disable system todo: look at sequence (also i2s)
+bool enable_system() { //Enable or disable system todo: look at sequence (also i2s)
   while (digitalRead(rot_sw) == HIGH) {}; //Continue when rotary switch is released
   Serial.println(F("Powering on..."));
   digitalWrite(vreg_sleep, HIGH);         //Set buckconverter to normal operation
 
+  full_functionality = false;
+
   if (!detect_device(eeprom_ext)) {
     Serial.println(F("Eeprom not found"));
-    return;
+    return true;
   }
 
-  eeprom_loaded = load_eeprom();
-  if (!eeprom_loaded) {
-    Serial.println(F("Failed to load settings from memory"));
-    Serial.println(F("Amplifier outputs are disabled"));
+  if (!load_factory_data()) {
+    return true;
+  }
+
+  set_outputs(); //Now that hardware is known, outputs can be enabled safely
+
+  digitalWrite(expansion_en, HIGH);   //Enable power to expansion connector
+
+  digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
+  digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
+  delay(10);
+  if (!detect_device(amp_1_addr)) {
+    Serial.println(F("Amplifier 1 not found")); //todo: do something?
+  }
+  if (!detect_device(amp_2_addr)) {
+    Serial.println(F("Amplifier 2 not found"));
+  }
+
+  load_eeprom();
+
+  if (!invalid_entry_stored) {
+    full_functionality = true;
+
+    send_pulse(bt_pio_19, 400); //Play startup tone
   }
 
   while (Serial.available() > 0) {
     Serial.read();  //Clear serial input buffer
   }
   Serial.println(F("On"));
-  system_enabled = true;
 }
 
 void disable_system() {
@@ -183,9 +206,9 @@ void disable_system() {
   wdt_disable();                    //Disable watchdog timer
   LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
   /* System will be in powerdown until interrupt occurs */
-  wdt_enable(WDTO_8S);              //Enable 8 seconds watchdog timer todo enable
-  detachPinChangeInterrupt(0);       //Wake up from serial
-  detachPinChangeInterrupt(rot_sw);  //Wake up from rotary switch
+  wdt_enable(WDTO_8S);              //Enable 8 seconds watchdog timer
+  detachPinChangeInterrupt(0);      //Wake up from serial
+  detachPinChangeInterrupt(rot_sw); //Wake up from rotary switch
 }
 
 void set_outputs() { //Remainder of GPIO are default pinmode (INPUT)
@@ -241,10 +264,9 @@ void set_vol() {
 
 uint16_t swap_int ( const uint16_t inFloat ) { //Todo; do by reference
   uint16_t retVal;
-  char *floatToConvert = ( char* ) & inFloat;
-  char *returnFloat = ( char* ) & retVal;
+  char *floatToConvert = (char*) & inFloat;
+  char *returnFloat = (char*) & retVal;
 
-  // swap the bytes into a temporary buffer
   returnFloat[0] = floatToConvert[1];
   returnFloat[1] = floatToConvert[0];
 
@@ -253,10 +275,9 @@ uint16_t swap_int ( const uint16_t inFloat ) { //Todo; do by reference
 
 float swap_float ( const float inFloat ) { //Todo; do by reference
   float retVal;
-  char *floatToConvert = ( char* ) & inFloat;
-  char *returnFloat = ( char* ) & retVal;
+  char *floatToConvert = (char*) & inFloat;
+  char *returnFloat = (char*) & retVal;
 
-  // swap the bytes into a temporary buffer
   returnFloat[0] = floatToConvert[3];
   returnFloat[1] = floatToConvert[2];
   returnFloat[2] = floatToConvert[1];

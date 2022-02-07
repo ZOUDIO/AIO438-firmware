@@ -14,8 +14,7 @@ void binary_data_handler() {
   uint16_t incoming_crc = incoming_data._byte[incoming_data_count - 2] << 8 | incoming_data._byte[incoming_data_count - 1];
   uint16_t calculated_crc = crc16_CCITT(incoming_data._byte, actual_data_count);
 
-  if (incoming_crc != calculated_crc) { //todo report back via serial
-    bitSet(payload.function_code, 8); //Set MSB (indicates error), todo return invalid CRC error
+  if (incoming_crc != calculated_crc) {
     return; //Drop message
   }
 
@@ -44,11 +43,10 @@ void prepare_outgoing_data() {
     outgoing_data_count = 4; //Function_code, address and amount
   } else if (payload.function_code == 2) { //Read bytes function
     outgoing_data_count = 4 + payload.with_addr.amount; //Function_code, address, amount and data bytes
-  } else if (payload.function_code == 3) { //Read bytes function
-    outgoing_data_count = 1; //Only function code todo expand with return info
-  } else if (payload.function_code == 4) { //Runtime CRC function
-    outgoing_data_count = 4 + sizeof(runtime_crc);
+  } else if (payload.function_code == 3) { //Execute eeprom
+    outgoing_data_count = 1; //Only function code
   } else { //Error codes
+    payload.data[0] = 0; //Return unspecified error code, todo expand
     outgoing_data_count = 1;
   }
 
@@ -83,22 +81,10 @@ void send_data() {
 void apply_settings() { //Todo restore old settings complete
   if (apply_settings_flag) {
 
-    load_system_variables();
-    load_dsp_entries(!verbose);
-    
-    //Todo duplicate code, integrate?
-    vol_old = -104;         //Set vol_old out of range to force set_vol to run
-    set_vol();              //Set volume
-
-    analog_gain_old = 32;   //Set analog_gain_old out of range to force analog_gain_monitor to run
-    analog_gain_monitor();  //Set analog gain
-
-    if (user.amp_1_enabled) {
-      write_single_register(amp_1, 0x03, 0b11);
-    }
-    if (user.amp_2_enabled) {
-      write_single_register(amp_2, 0x03, 0b11);
-    }
+    float current_volume = vol;
+    load_eeprom();
+    vol = current_volume; //Reset old volume 
+    set_vol(); //Todo, improve this
 
     Serial.println(F("New settings applied"));
     apply_settings_flag = false;
