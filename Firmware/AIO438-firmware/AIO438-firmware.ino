@@ -36,7 +36,7 @@
 #include "eeprom_layout.h"    //Struct definitions for eeprom storage
 
 const char model[] = "AIO438"; //Todo: put/get in/from eeprom
-const char firmware[] = "2.0.0";
+const char firmware[] = "2.0.1";
 
 //Can to pass to functions
 const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?

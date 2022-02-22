@@ -118,7 +118,7 @@ void analog_gain_monitor() {
 
 void tws_monitor() { //Check TrueWirelessStereo button
   tws_button.Update(); //Implement actions
-  if (rot_button.clicks) {
+  if (tws_button.clicks) {
     Serial.println(F("TWS not implemented yet")); //todo: enable
   }
 }
