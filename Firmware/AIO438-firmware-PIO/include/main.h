@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // #include "Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
-#include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt //todo Switch to nicohood?
+#include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/asheeshr/PinChangeInt.git //todo Switch to nicohood?
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
 #include "Rotary.h"           //Rotary encoder library from https://github.com/brianlow/Rotary
 #include "CRC.h"              //Cyclic-Redundancy-Check library from https://github.com/RobTillaart/CRC       
