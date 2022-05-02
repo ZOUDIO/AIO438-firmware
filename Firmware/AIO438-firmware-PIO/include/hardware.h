@@ -1,5 +1,5 @@
-#ifndef HARDWARE
-#define HARDWARE
+#ifndef HARDWARE_H
+#define HARDWARE_H
 //Pinout, todo const uint?
 #define bt_led_0      2   //PD2
 #define bt_enable     3   //PD3

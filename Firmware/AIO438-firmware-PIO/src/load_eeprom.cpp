@@ -1,5 +1,8 @@
 #include "load_eeprom.h"
 
+const byte cfg_meta_burst = 253;
+const byte cfg_meta_delay = 254;
+
 void load_eeprom() {
   load_system_variables();
   

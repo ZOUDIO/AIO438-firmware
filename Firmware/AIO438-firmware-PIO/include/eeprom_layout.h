@@ -1,5 +1,5 @@
-#ifndef EEPROM_LAYOUT
-#define EEPROM_LAYOUT
+#ifndef EEPROM_LAYOUT_H
+#define EEPROM_LAYOUT_H
 
 enum class entry_type_enum { //Determines how the entry data is handled
   dsp_default,  //Always used
@@ -37,7 +37,9 @@ struct system_variables {
   float power_shutdown;
   uint8_t amp_1_output;
   uint8_t amp_2_output;
-} user;
+};
+
+extern struct system_variables user;
 
 struct version_struct {
   uint8_t major;
@@ -55,7 +57,9 @@ struct factory_data_struct {
   uint8_t model;      //Check against model_enum
   version_struct hw_version;
   version_struct bt_fw_version;
-} factory_data;
+};
+
+extern struct factory_data_struct factory_data;
 
 struct eeprom_layout {
   factory_data_struct factory_data;

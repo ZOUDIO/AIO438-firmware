@@ -1,5 +1,5 @@
-#ifndef ASCII_DATA_HANDLER
-#define ASCII_DATA_HANDLER
+#ifndef ASCII_DATA_HANDLER_H
+#define ASCII_DATA_HANDLER_H
 
 #include "main.h"
 #include<stdint.h>

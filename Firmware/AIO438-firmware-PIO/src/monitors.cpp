@@ -1,5 +1,8 @@
 #include "monitors.h"
 
+ClickButton rot_button(rot_sw, HIGH); //Encoder switch
+ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
+
 void serial_monitor() {
   if (Serial.available() > 0) {         //If data is available
     byte incoming_byte = Serial.read();  //Read data

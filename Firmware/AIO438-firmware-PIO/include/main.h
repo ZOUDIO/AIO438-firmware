@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#include "Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
+// #include "Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
 #include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/GreyGnome/PinChangeInt //todo Switch to nicohood?
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
 #include "Rotary.h"           //Rotary encoder library from https://github.com/brianlow/Rotary
@@ -18,20 +18,20 @@
 #include "load_eeprom.h"
 #include "monitors.h"
 
-const char model[] = "AIO438"; //Todo: put/get in/from eeprom
-const char firmware[] = "2.0.1";
+extern const char* model; //Todo: put/get in/from eeprom
+extern const char* firmware;
 
 //Can to pass to functions
-const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
-const int amp_1 = 1;
-const int amp_2 = 2;
-const bool verbose = true;
+extern const int amp_dual; //Write to both amps, todo: pack in enum, typesafety icm address?
+extern const int amp_1;
+extern const int amp_2;
+extern const bool verbose;
 
 //PurePathConsole constants
-const byte cfg_meta_burst = 253;
-const byte cfg_meta_delay = 254;
+extern const byte cfg_meta_burst;
+extern const byte cfg_meta_delay;
 
-const uint16_t valid_signature = 0x5555;
+extern const uint16_t valid_signature;
 
 typedef struct {
   uint8_t command;
@@ -59,40 +59,41 @@ struct { //Date comes in big-endian
   };
 } payload;
 
-const byte array_size = sizeof(payload) + 2;  //Payload plus CRC16
-byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
-byte outgoing_data[array_size];   //Data before encoding
+extern const byte array_size;  //Payload plus CRC16
+extern byte temp_buffer[];//Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
+extern byte outgoing_data[];   //Data before encoding
 
 union {
-  byte _byte[array_size]; //Get as byte array
-  char _char[array_size]; //Get as char array
+  byte _byte[sizeof(payload)+2]; //Get as byte array
+  char _char[sizeof(payload)+2]; //Get as char array
 } incoming_data; //todo, with reinterpret_cast?, look at temp, incoming, outgoing etc shared memory space
 
-byte incoming_data_count;
-byte outgoing_data_count;
-byte temp_buffer_count;
-char actual_data_count; //Can be negative todo: see if actually needed
-bool currently_receiving;
 
-bool eq_enabled;
-bool eq_enabled_old;
-bool eq_state;
-bool eq_state_old;
-bool system_enabled;
-bool apply_settings_flag; //todo: Rename?
-float vol;
-float vol_old;
-float vol_reduction;
-float power_voltage;
-char analog_gain;
-char analog_gain_old;
-bool full_functionality;
-bool invalid_entry_stored;
+extern byte incoming_data_count;
+extern byte outgoing_data_count;
+extern byte temp_buffer_count;
+extern char actual_data_count; //Can be negative todo: see if actually needed
+extern bool currently_receiving;
 
-ClickButton rot_button(rot_sw, HIGH); //Encoder switch
-ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
-Rotary rot = Rotary(rot_a, rot_b);    //Encoder
-CRC16 crc;
+extern bool eq_enabled;
+extern bool eq_enabled_old;
+extern bool eq_state;
+extern bool eq_state_old;
+extern bool system_enabled;
+extern bool apply_settings_flag; //todo: Rename?
+extern float vol;
+extern float vol_old;
+extern float vol_reduction;
+extern float power_voltage;
+extern char analog_gain;
+extern char analog_gain_old;
+extern bool full_functionality;
+extern bool invalid_entry_stored;
+
+extern ClickButton rot_button; //Encoder switch
+extern ClickButton tws_button; //TrueWirelessStereo button
+extern Rotary rot;    //Encoder
+extern CRC16 crc;
 
 void setup();
 void loop();
@@ -106,5 +107,6 @@ void set_led(String color, int _delay);
 void set_vol();
 uint16_t swap_int ( const uint16_t inFloat );
 float swap_float ( const float inFloat );
+void initialize_global_variables();
 
 #endif

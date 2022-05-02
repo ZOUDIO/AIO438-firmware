@@ -1,5 +1,5 @@
-#ifndef MONITORS
-#define MONITORS
+#ifndef MONITORS_H
+#define MONITORS_H
 
 #include <Arduino.h>
 #include "main.h"

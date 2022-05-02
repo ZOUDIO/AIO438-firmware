@@ -1,5 +1,5 @@
-#ifndef I2C
-#define I2C
+#ifndef I2C_H
+#define I2C_H
 
 #include <Arduino.h>
 #include "hardware.h"

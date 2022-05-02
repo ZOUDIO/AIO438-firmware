@@ -1,5 +1,5 @@
-#ifndef BINARY_DATA_HANDLER
-#define BINARY_DATA_HANDLER
+#ifndef BINARY_DATA_HANDLER_H
+#define BINARY_DATA_HANDLER_H
 
 #include <Arduino.h>
 #include "I2C.h"

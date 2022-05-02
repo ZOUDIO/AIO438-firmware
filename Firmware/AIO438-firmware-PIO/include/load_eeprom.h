@@ -1,5 +1,5 @@
-#ifndef LOAD_EEPROM
-#define LOAD_EEPROM
+#ifndef LOAD_EEPROM_H
+#define LOAD_EEPROM_H
 
 #include <Arduino.h>
 #include "main.h"

@@ -25,6 +25,52 @@
 
 #include "main.h"
 
+const char* model = "AIO438";
+const char* firmware = "2.0.1";
+
+const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
+const int amp_1 = 1;
+const int amp_2 = 2;
+const bool verbose = true;
+
+
+const uint16_t valid_signature = 0x5555;
+
+Rotary rot = Rotary(rot_a, rot_b);
+CRC16 crc;
+
+const byte array_size = sizeof(payload) + 2;  //Payload plus CRC16
+byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
+byte outgoing_data[array_size];   //Data before encoding
+
+
+// byte* _byte[array_size];
+// char* _char[array_size];
+
+byte incoming_data_count;
+byte outgoing_data_count;
+byte temp_buffer_count;
+char actual_data_count; //Can be negative todo: see if actually needed
+bool currently_receiving;
+
+bool eq_enabled;
+bool eq_enabled_old;
+bool eq_state;
+bool eq_state_old;
+bool system_enabled;
+bool apply_settings_flag; //todo: Rename?
+float vol;
+float vol_old;
+float vol_reduction;
+float power_voltage;
+char analog_gain;
+char analog_gain_old;
+bool full_functionality;
+bool invalid_entry_stored;
+
+struct factory_data_struct factory_data;
+struct system_variables user;
+
 void setup() { //Todo: move pinmodes to after eeprom reading?
   pinMode(vreg_sleep, OUTPUT);  //Hard-wired
   pinMode(0, INPUT_PULLUP);     //Pull up the RX pin to avoid accidental interrupts
@@ -115,14 +161,14 @@ void disable_system() {
   Serial.println(F("Off"));
   Serial.flush();
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
-  attachPinChangeInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial todo null pointer function?, update lib?
-  attachPinChangeInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
+  PCattachInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial todo null pointer function?, update lib?
+  PCattachInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
   wdt_disable();                    //Disable watchdog timer
   LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
   /* System will be in powerdown until interrupt occurs */
   wdt_enable(WDTO_8S);              //Enable 8 seconds watchdog timer
-  detachPinChangeInterrupt(0);      //Wake up from serial
-  detachPinChangeInterrupt(rot_sw); //Wake up from rotary switch
+  PCdetachInterrupt(0);      //Wake up from serial
+  PCdetachInterrupt(rot_sw); //Wake up from rotary switch
 }
 
 void set_outputs() { //Remainder of GPIO are default pinmode (INPUT)
@@ -198,4 +244,9 @@ float swap_float ( const float inFloat ) { //Todo; do by reference
   returnFloat[3] = floatToConvert[0];
 
   return retVal;
+}
+
+void initialize_global_variables(){
+  const char* model = "AIO438";
+
 }
