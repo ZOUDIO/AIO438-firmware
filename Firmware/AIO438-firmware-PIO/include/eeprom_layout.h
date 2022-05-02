@@ -1,3 +1,6 @@
+#ifndef EEPROM_LAYOUT
+#define EEPROM_LAYOUT
+
 enum class entry_type_enum { //Determines how the entry data is handled
   dsp_default,  //Always used
   dsp_eq_off,   //Only used when EQ is disabled
@@ -64,3 +67,5 @@ struct eeprom_layout {
   entry_struct first_entry;
   //Remainder of eeprom is reserved for dsp settings
 };
+
+#endif

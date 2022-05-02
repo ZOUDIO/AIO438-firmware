@@ -1,7 +1,4 @@
-//Serial encoding constants
-const byte special_marker = 253; //Value 253, 254 and 255 can be sent as 253 0, 253 1 and 253 2 respectively
-const byte start_marker = 254;
-const byte end_marker = 255;
+#include "binary_data_handler.h"
 
 void binary_data_handler() {
   decode_incoming_data();

@@ -1,3 +1,5 @@
+#include "load_eeprom.h"
+
 void load_eeprom() {
   load_system_variables();
   

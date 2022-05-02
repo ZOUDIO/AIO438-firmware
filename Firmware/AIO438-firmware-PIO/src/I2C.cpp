@@ -1,6 +1,4 @@
-#define member_size(type, member) sizeof(((type *)0)->member) //Get struct member size in bytes
-#define eeprom_put(member) write_eeprom_setup(offsetof(eeprom_layout, member), member_size(eeprom_layout, member), eeprom_buffer.as_bytes)  //Write buffer data to to eeprom
-#define eeprom_get(member) read_eeprom(offsetof(eeprom_layout, member), member_size(eeprom_layout, member)) //Fill buffer with eeprom data
+#include "I2C.h"
 
 bool detect_device(int addr) {
   Wire.beginTransmission(addr);

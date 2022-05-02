@@ -1,3 +1,5 @@
+#ifndef HARDWARE
+#define HARDWARE
 //Pinout, todo const uint?
 #define bt_led_0      2   //PD2
 #define bt_enable     3   //PD3
@@ -28,3 +30,5 @@
 //Eeprom properties
 #define eeprom_size   32768
 #define page_size     64
+
+#endif

@@ -1,3 +1,5 @@
+#include "monitors.h"
+
 void serial_monitor() {
   if (Serial.available() > 0) {         //If data is available
     byte incoming_byte = Serial.read();  //Read data

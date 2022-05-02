@@ -1,3 +1,5 @@
+#include "ascii_data_handler.h"
+
 void ascii_data_handler() {
   char *command = strtok (incoming_data._char, " ");  //Commands are space-delimited
 

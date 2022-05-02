@@ -1,3 +1,5 @@
+#include "binary_command_handler.h"
+
 void binary_command_handler() {
   memcpy(&payload, incoming_data._byte, actual_data_count); //Copy incoming data into payload struct
 
