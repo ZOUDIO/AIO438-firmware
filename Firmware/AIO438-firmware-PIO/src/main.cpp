@@ -46,6 +46,8 @@ byte outgoing_data[array_size];   //Data before encoding
 
 // byte* _byte[array_size];
 // char* _char[array_size];
+incoming_data_union incoming_data;
+eeprom_buffer_union eeprom_buffer;
 
 byte incoming_data_count;
 byte outgoing_data_count;

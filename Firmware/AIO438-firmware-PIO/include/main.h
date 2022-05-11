@@ -38,14 +38,16 @@ typedef struct {
   uint8_t param;
 } cfg_reg;
 
-union { //Used for type conversion
+typedef union { //Used for type conversion
   byte as_bytes[64];
   float as_float;
   factory_data_struct as_factory_data;
   system_variables as_user_data; //todo: rename?
   entry_struct as_entry;
   cfg_reg as_cfg_reg;
-} eeprom_buffer;
+} eeprom_buffer_union;
+
+extern eeprom_buffer_union eeprom_buffer;
 
 struct { //Date comes in big-endian
   uint8_t function_code; //todo: make enum
@@ -63,11 +65,12 @@ extern const byte array_size;  //Payload plus CRC16
 extern byte temp_buffer[];//Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 extern byte outgoing_data[];   //Data before encoding
 
-union {
+typedef union {
   byte _byte[sizeof(payload)+2]; //Get as byte array
   char _char[sizeof(payload)+2]; //Get as char array
-} incoming_data; //todo, with reinterpret_cast?, look at temp, incoming, outgoing etc shared memory space
+} incoming_data_union; //todo, with reinterpret_cast?, look at temp, incoming, outgoing etc shared memory space
 
+extern incoming_data_union incoming_data;
 
 extern byte incoming_data_count;
 extern byte outgoing_data_count;
