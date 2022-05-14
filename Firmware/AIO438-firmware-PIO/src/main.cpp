@@ -25,9 +25,10 @@
 
 #include "main.h"
 
-const char* model = "AIO438";
+const char* model = "AIO438"; //Todo: put/get in/from eeprom
 const char* firmware = "2.0.1";
 
+//Can to pass to functions
 const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
 const int amp_1 = 1;
 const int amp_2 = 2;
@@ -36,16 +37,16 @@ const bool verbose = true;
 
 const uint16_t valid_signature = 0x5555;
 
-Rotary rot = Rotary(rot_a, rot_b);
+ClickButton rot_button(rot_sw, HIGH); //Encoder switch
+ClickButton tws_button(tws_sw, HIGH); //TrueWirelessStereo button
+Rotary rot = Rotary(rot_a, rot_b);//Encoder
 CRC16 crc;
 
 const byte array_size = sizeof(payload) + 2;  //Payload plus CRC16
 byte temp_buffer[2 * array_size]; //Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
 byte outgoing_data[array_size];   //Data before encoding
 
-
-// byte* _byte[array_size];
-// char* _char[array_size];
+payload_struct payload;
 incoming_data_union incoming_data;
 eeprom_buffer_union eeprom_buffer;
 
@@ -72,6 +73,8 @@ bool invalid_entry_stored;
 
 struct factory_data_struct factory_data;
 struct system_variables user;
+
+const char *amp_output_state_str[] = {"dual", "single", "disable"};
 
 void setup() { //Todo: move pinmodes to after eeprom reading?
   pinMode(vreg_sleep, OUTPUT);  //Hard-wired
@@ -248,7 +251,3 @@ float swap_float ( const float inFloat ) { //Todo; do by reference
   return retVal;
 }
 
-void initialize_global_variables(){
-  const char* model = "AIO438";
-
-}

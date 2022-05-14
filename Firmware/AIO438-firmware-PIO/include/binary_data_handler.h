@@ -7,6 +7,19 @@
 #include "binary_command_handler.h"
 #include "load_eeprom.h"
 
+
+extern byte temp_buffer[];
+extern byte outgoing_data[];
+
+extern byte incoming_data_count;
+extern byte outgoing_data_count;
+
+extern byte temp_buffer_count;
+extern char actual_data_count; 
+
+extern bool apply_settings_flag;
+extern float vol;
+
 //Serial encoding constants
 const byte special_marker = 253; //Value 253, 254 and 255 can be sent as 253 0, 253 1 and 253 2 respectively
 const byte start_marker = 254;

@@ -18,25 +18,39 @@
 #include "load_eeprom.h"
 #include "monitors.h"
 
-extern const char* model; //Todo: put/get in/from eeprom
-extern const char* firmware;
-
-//Can to pass to functions
-extern const int amp_dual; //Write to both amps, todo: pack in enum, typesafety icm address?
-extern const int amp_1;
-extern const int amp_2;
-extern const bool verbose;
 
 //PurePathConsole constants
-extern const byte cfg_meta_burst;
-extern const byte cfg_meta_delay;
+// extern const byte cfg_meta_burst;
+// extern const byte cfg_meta_delay;
 
-extern const uint16_t valid_signature;
+// extern const uint16_t valid_signature;
 
 typedef struct {
   uint8_t command;
   uint8_t param;
 } cfg_reg;
+
+
+struct payload_struct{ //Date comes in big-endian
+  uint8_t function_code; //todo: make enum
+  union {
+    struct {
+      uint16_t address;
+      uint8_t amount;
+      uint8_t data[64];
+    } with_addr;
+    uint8_t data[67]; //Raw bytes
+  };
+};
+
+extern struct payload_struct payload;
+
+typedef union {
+  byte _byte[sizeof(payload)+2]; //Get as byte array
+  char _char[sizeof(payload)+2]; //Get as char array
+} incoming_data_union; //todo, with reinterpret_cast?, look at temp, incoming, outgoing etc shared memory space
+
+extern incoming_data_union incoming_data;
 
 typedef union { //Used for type conversion
   byte as_bytes[64];
@@ -48,55 +62,6 @@ typedef union { //Used for type conversion
 } eeprom_buffer_union;
 
 extern eeprom_buffer_union eeprom_buffer;
-
-struct { //Date comes in big-endian
-  uint8_t function_code; //todo: make enum
-  union {
-    struct {
-      uint16_t address;
-      uint8_t amount;
-      uint8_t data[64];
-    } with_addr;
-    uint8_t data[67]; //Raw bytes
-  };
-} payload;
-
-extern const byte array_size;  //Payload plus CRC16
-extern byte temp_buffer[];//Worst case scenario every value is 253 or higher, which needs two bytes to reconstruct
-extern byte outgoing_data[];   //Data before encoding
-
-typedef union {
-  byte _byte[sizeof(payload)+2]; //Get as byte array
-  char _char[sizeof(payload)+2]; //Get as char array
-} incoming_data_union; //todo, with reinterpret_cast?, look at temp, incoming, outgoing etc shared memory space
-
-extern incoming_data_union incoming_data;
-
-extern byte incoming_data_count;
-extern byte outgoing_data_count;
-extern byte temp_buffer_count;
-extern char actual_data_count; //Can be negative todo: see if actually needed
-extern bool currently_receiving;
-
-extern bool eq_enabled;
-extern bool eq_enabled_old;
-extern bool eq_state;
-extern bool eq_state_old;
-extern bool system_enabled;
-extern bool apply_settings_flag; //todo: Rename?
-extern float vol;
-extern float vol_old;
-extern float vol_reduction;
-extern float power_voltage;
-extern char analog_gain;
-extern char analog_gain_old;
-extern bool full_functionality;
-extern bool invalid_entry_stored;
-
-extern ClickButton rot_button; //Encoder switch
-extern ClickButton tws_button; //TrueWirelessStereo button
-extern Rotary rot;    //Encoder
-extern CRC16 crc;
 
 void setup();
 void loop();

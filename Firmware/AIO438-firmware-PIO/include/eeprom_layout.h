@@ -22,8 +22,6 @@ enum class amp_output_state {
   disable,
 };
 
-static const char *amp_output_state_str[] = {"dual", "single", "disable"};
-
 struct system_variables {
   uint16_t signature; //Should be 0x5555
   uint8_t amp_1_enabled : 1; //Legacy, ignored since 2.0.0
