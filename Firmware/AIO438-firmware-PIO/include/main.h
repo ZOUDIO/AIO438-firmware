@@ -1,5 +1,4 @@
-#ifndef MAIN_H
-#define MAIN_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -76,5 +75,3 @@ void set_vol();
 uint16_t swap_int ( const uint16_t inFloat );
 float swap_float ( const float inFloat );
 void initialize_global_variables();
-
-#endif

@@ -1,6 +1,4 @@
-#ifndef EEPROM_LAYOUT_H
-#define EEPROM_LAYOUT_H
-
+#pragma once
 #pragma pack (push, 1) //Pack structs with single byte alignment
 
 enum class entry_type_enum { //Determines how the entry data is handled
@@ -71,5 +69,3 @@ struct eeprom_layout {
   entry_struct first_entry;
   //Remainder of eeprom is reserved for dsp settings
 };
-
-#endif

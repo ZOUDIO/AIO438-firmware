@@ -1,5 +1,4 @@
-#ifndef LOAD_EEPROM_H
-#define LOAD_EEPROM_H
+#pragma once
 
 #include <Arduino.h>
 #include "main.h"
@@ -33,7 +32,3 @@ void load_system_variables();
 uint8_t load_dsp_entries(bool _verbose);
 void load_dsp(int start_reg, int amount, byte amp);
 uint16_t calculate_crc(int start_reg, int amount);
-
-#endif
-
-

@@ -1,5 +1,4 @@
-#ifndef I2C_H
-#define I2C_H
+#pragma once
 
 #include <Arduino.h>
 #include "hardware.h"
@@ -22,7 +21,3 @@ void write_single_register(byte amp, byte reg, byte data);
 void write_multiple_registers(byte amp, byte data[], byte amount);
 void write_registers(byte amp, byte data[], byte amount);
 int read_register(int amp_addr, byte reg);
-
-#endif
-
-

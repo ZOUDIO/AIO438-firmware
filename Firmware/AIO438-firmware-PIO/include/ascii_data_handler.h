@@ -1,5 +1,4 @@
-#ifndef ASCII_DATA_HANDLER_H
-#define ASCII_DATA_HANDLER_H
+#pragma once
 
 #include "main.h"
 #include<stdint.h>
@@ -31,5 +30,3 @@ void dump_dsp();
 void get_status();
 void println_version_struct(version_struct _struct);
 void get_status_amp(int amp);
-
-#endif

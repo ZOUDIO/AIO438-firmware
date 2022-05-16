@@ -1,5 +1,4 @@
-#ifndef MONITORS_H
-#define MONITORS_H
+#pragma once
 
 #include <Arduino.h>
 #include "main.h"
@@ -34,5 +33,3 @@ void analog_gain_monitor();
 void tws_monitor();
 void eq_monitor();
 void aux_level_monitor();
-
-#endif

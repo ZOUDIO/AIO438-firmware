@@ -1,5 +1,4 @@
-#ifndef BINARY_COMMAND_HANDLER_H
-#define BINARY_COMMAND_HANDLER_H
+#pragma once
 
 #include <Arduino.h>
 #include "I2C.h"
@@ -10,5 +9,3 @@ extern char actual_data_count;
 extern bool apply_settings_flag;
 
 void binary_command_handler();
-
-#endif

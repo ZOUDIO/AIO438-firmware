@@ -1,5 +1,4 @@
-#ifndef BINARY_DATA_HANDLER_H
-#define BINARY_DATA_HANDLER_H
+#pragma once
 
 #include <Arduino.h>
 #include "I2C.h"
@@ -31,6 +30,3 @@ void prepare_outgoing_data();
 void encode_outgoing_data();
 void send_data();
 void apply_settings();
-
-
-#endif
