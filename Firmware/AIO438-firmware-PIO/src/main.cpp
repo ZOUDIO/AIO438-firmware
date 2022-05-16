@@ -153,6 +153,7 @@ bool enable_system() { //Enable or disable system todo: look at sequence (also i
     Serial.read();  //Clear serial input buffer
   }
   Serial.println(F("On"));
+  return true;
 }
 
 void disable_system() {
