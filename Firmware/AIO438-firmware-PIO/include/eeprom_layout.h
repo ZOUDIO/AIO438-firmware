@@ -1,6 +1,8 @@
 #ifndef EEPROM_LAYOUT_H
 #define EEPROM_LAYOUT_H
 
+#pragma pack (push, 1) //Pack structs with single byte alignment
+
 enum class entry_type_enum { //Determines how the entry data is handled
   dsp_default,  //Always used
   dsp_eq_off,   //Only used when EQ is disabled
