@@ -128,9 +128,11 @@ bool enable_system() { //Enable or disable system todo: look at sequence (also i
     return true;
   }
 
-  if (model == "AIO438" && !load_factory_data()) { //Only AIO438 has factory data in memory
+  #ifdef AIO438
+  if (!load_factory_data()) { //Only AIO438 has factory data in memory
     return true;
   }
+  #endif
 
   set_outputs(); //Now that hardware is known, outputs can be enabled safely
 
@@ -153,7 +155,12 @@ bool enable_system() { //Enable or disable system todo: look at sequence (also i
   if (!invalid_entry_stored) {
     full_functionality = true;
 
+    #ifdef AIO438
     send_pulse(bt_pio_19, 400); //Play startup tone
+    #endif
+    #ifdef AIO4CH
+    send_pulse(bt_pio_8, 100); //Play startup tone
+    #endif
   }
 
   while (Serial.available() > 0) {
@@ -170,7 +177,9 @@ void disable_system() {
   delay(1100);  //Wait for everything to power off
   digitalWrite(amp_1_pdn, LOW);
   digitalWrite(amp_2_pdn, LOW);
+  #ifdef AIO438
   digitalWrite(expansion_en, LOW);
+  #endif
   Serial.println(F("Off"));
   Serial.flush();
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
@@ -185,31 +194,23 @@ void disable_system() {
 }
 
 void set_outputs() { //Remainder of GPIO are default pinmode (INPUT)
-  pinMode(expansion_en, OUTPUT);
   pinMode(bt_enable, OUTPUT);
   pinMode(amp_1_pdn, OUTPUT);
   pinMode(amp_2_pdn, OUTPUT);
-  pinMode(bt_pio_19, OUTPUT);
-  pinMode(bt_pio_20, OUTPUT);
-  pinMode(bt_pio_21, OUTPUT);
-  pinMode(bt_pio_22, OUTPUT);
   pinMode(led_green, OUTPUT);
   pinMode(led_red, OUTPUT);
 
-  #ifdef expansion_en
+  #ifdef AIO438
     pinMode(expansion_en, OUTPUT);
-  #endif
-  #ifdef bt_pio_19
     pinMode(bt_pio_19, OUTPUT);
-  #endif
-  #ifdef bt_pio_20
     pinMode(bt_pio_20, OUTPUT);
-  #endif
-  #ifdef bt_pio_21
     pinMode(bt_pio_21, OUTPUT);
-  #endif
-  #ifdef bt_pio_22
     pinMode(bt_pio_22, OUTPUT);
+  #endif
+  #ifdef AIO4CH
+    pinMode(bt_pio_0, OUTPUT);
+    pinMode(bt_pio_1, OUTPUT);
+    pinMode(bt_pio_8, OUTPUT);
   #endif
 }
 

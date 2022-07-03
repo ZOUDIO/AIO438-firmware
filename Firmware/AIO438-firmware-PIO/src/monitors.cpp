@@ -147,10 +147,10 @@ void tws_monitor() { //Check TrueWirelessStereo button
       Serial.println(F("TWS not implemented yet")); //todo: enable
     #endif
     #ifdef AIO4CH
-      if (TWS_button.clicks == 2) {             //Double click: select next audio source
+      if (tws_button.clicks == 2) {             //Double click: select next audio source
         Serial.println(F("TWS next audio source"));
         send_pulse(bt_pio_1, 1600);
-      } else if (TWS_button.clicks == 3) {      //Triple click: change audio routing
+      } else if (tws_button.clicks == 3) {      //Triple click: change audio routing
         Serial.println(F("TWS Change audio routing"));
         send_pulse(bt_pio_1, 600);
       } else {                                  //Anything else: single button pair
@@ -158,7 +158,6 @@ void tws_monitor() { //Check TrueWirelessStereo button
         send_pulse(bt_pio_1, 100);
       }
     #endif
-    
   }
 }
 
