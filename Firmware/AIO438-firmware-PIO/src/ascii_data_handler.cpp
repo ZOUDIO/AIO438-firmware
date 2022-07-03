@@ -1,4 +1,5 @@
 #include "ascii_data_handler.h"
+#define SET_FIELD(s,f,v)	offsetof(typeof(s),##f),(s.f = v)
 
 void ascii_data_handler() {
   char *command = strtok (incoming_data._char, " ");  //Commands are space-delimited
@@ -38,6 +39,17 @@ void ascii_data_handler() {
         clear_eeprom(start_reg);
       }
     }
+  } else if (!strcmp(command, "BT")) {
+    command = strtok (NULL, " ");
+    if (!strcmp(command, "ENABLE")) {
+      user.bt_enabled = true;
+    } else if (!strcmp(command, "DISABLE")) {
+      user.bt_enabled = false;
+    }
+    Serial.print(F("Bluetooth enabled: "));
+    Serial.println(user.bt_enabled ? "true" : "false");
+    eeprom_buffer.as_user_data = user;
+    write_eeprom(offsetof(eeprom_layout, user) + 2, 1, eeprom_buffer.as_bytes + 2);
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
     Serial.println(command);

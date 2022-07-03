@@ -8,6 +8,8 @@ void load_eeprom() {
   
   if (user.bt_enabled) {
     digitalWrite(bt_enable, HIGH);    //Enable BT module
+  } else {
+    Serial.println(F("BT disabled"));
   }
 
   write_single_register(amp_2, 0x6A, 0b1011);  //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
