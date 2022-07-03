@@ -1,7 +1,5 @@
 #pragma once
 
-#define AIO438
-
 #include <Arduino.h>
 
 #include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/asheeshr/PinChangeInt.git //todo Switch to nicohood?
