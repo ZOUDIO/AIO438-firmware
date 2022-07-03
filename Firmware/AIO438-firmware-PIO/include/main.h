@@ -1,8 +1,9 @@
 #pragma once
 
+#define AIO438
+
 #include <Arduino.h>
 
-// #include "Wire.h" //Modified Wire.h with 66 byte buffer to send 64 byte arrays with 2 byte address
 #include "PinChangeInt.h"     //Pin Change Interrupt library from https://github.com/asheeshr/PinChangeInt.git //todo Switch to nicohood?
 #include "ClickButton.h"      //Button press detection library from https://github.com/marcobrianza/ClickButton
 #include "Rotary.h"           //Rotary encoder library from https://github.com/brianlow/Rotary
@@ -16,13 +17,6 @@
 #include "I2C.h"
 #include "load_eeprom.h"
 #include "monitors.h"
-
-
-//PurePathConsole constants
-// extern const byte cfg_meta_burst;
-// extern const byte cfg_meta_delay;
-
-// extern const uint16_t valid_signature;
 
 typedef struct {
   uint8_t command;

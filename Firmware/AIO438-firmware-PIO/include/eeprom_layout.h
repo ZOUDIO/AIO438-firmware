@@ -45,14 +45,9 @@ struct version_struct {
   uint8_t patch;
 };
 
-enum class model_enum { //Product model name
-  AIO4CH,
-  AIO438,
-};
-
 struct factory_data_struct {
   uint16_t signature; //Should be 0x5555
-  uint8_t model;      //Check against model_enum
+  uint8_t model;      //Deprecated. Model is hardcoded in firmware
   version_struct hw_version;
   version_struct bt_fw_version;
 };

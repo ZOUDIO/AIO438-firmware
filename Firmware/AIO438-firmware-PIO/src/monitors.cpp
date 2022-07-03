@@ -76,14 +76,36 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
     system_enabled = false;
   } else if (rot_button.clicks == 2) {      //Short double press: next track
     Serial.println(F("Next track"));
+    #ifdef AIO4CH
+      send_pulse(bt_pio_0, 600);
+    #endif
+    #ifdef AIO438
+      Serial.println(F("Not implemented yet"));
+    #endif
   } else if (rot_button.clicks == 3) {      //Short triple press: previous track
     Serial.println(F("Previous track"));
+    #ifdef AIO4CH
+      send_pulse(bt_pio_0, 100);
+    #endif
+    #ifdef AIO438
+      Serial.println(F("Not implemented yet"));
+    #endif
   } else if (rot_button.clicks == -1) {     //Long press: enter pairing
-    send_pulse(bt_pio_19, 400); //todo_now check
     Serial.println(F("Enter pairing"));
+    #ifdef AIO4CH
+      send_pulse(bt_pio_0, 1100);
+    #endif
+    #ifdef AIO438
+      send_pulse(bt_pio_19, 400);
+    #endif
   } else if (rot_button.clicks == -2) {     //Double press and hold: reset pairing list
-    send_pulse(bt_pio_19, 900); //todo_now check
     Serial.println(F("Reset pairing list"));
+    #ifdef AIO4CH
+      send_pulse(bt_pio_0, 1600);
+    #endif
+    #ifdef AIO438
+      send_pulse(bt_pio_19, 900);
+    #endif
   }
 }
 
@@ -121,7 +143,22 @@ void analog_gain_monitor() {
 void tws_monitor() { //Check TrueWirelessStereo button
   tws_button.Update(); //Implement actions
   if (tws_button.clicks) {
-    Serial.println(F("TWS not implemented yet")); //todo: enable
+    #ifdef AIO438
+      Serial.println(F("TWS not implemented yet")); //todo: enable
+    #endif
+    #ifdef AIO4CH
+      if (TWS_button.clicks == 2) {             //Double click: select next audio source
+        Serial.println(F("TWS next audio source"));
+        send_pulse(bt_pio_1, 1600);
+      } else if (TWS_button.clicks == 3) {      //Triple click: change audio routing
+        Serial.println(F("TWS Change audio routing"));
+        send_pulse(bt_pio_1, 600);
+      } else {                                  //Anything else: single button pair
+        Serial.println(F("TWS begin link"));
+        send_pulse(bt_pio_1, 100);
+      }
+    #endif
+    
   }
 }
 
@@ -153,5 +190,5 @@ void eq_monitor() { //Check EQ button
 }
 
 void aux_level_monitor() {
-  //Todo: implement
+  //Todo: implement, AIO438 only
 }

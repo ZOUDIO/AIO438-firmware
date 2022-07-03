@@ -53,7 +53,7 @@ void set_amp_output_state(uint8_t amp_index, uint8_t amp_addr, uint8_t output) {
   write_single_register(amp_index, 0x03, 0b11); //Play mode
 }
 
-bool load_factory_data() {
+bool load_factory_data() {  
   eeprom_get(factory_data);
   factory_data = eeprom_buffer.as_factory_data;
 

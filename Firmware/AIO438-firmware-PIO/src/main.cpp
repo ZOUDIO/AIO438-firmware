@@ -25,15 +25,20 @@
 
 #include "main.h"
 
-const char* model = "AIO438"; //Todo: put/get in/from eeprom
-const char* firmware = "2.0.1";
+#ifdef AIO438
+  const char* model = "AIO438";
+#endif
+#ifdef AIO4CH
+  const char* model = "AIO4CH";
+#endif
+
+const char* firmware = "2.1.0";
 
 //Can to pass to functions
 const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
 const int amp_1 = 1;
 const int amp_2 = 2;
 const bool verbose = true;
-
 
 const uint16_t valid_signature = 0x5555;
 
@@ -78,7 +83,7 @@ const char *amp_output_state_str[] = {"dual", "single", "disable"};
 
 void setup() { //Todo: move pinmodes to after eeprom reading?
   pinMode(vreg_sleep, OUTPUT);  //Hard-wired
-  pinMode(0, INPUT_PULLUP);     //Pull up the RX pin to avoid accidental interrupts
+  pinMode(RXD, INPUT_PULLUP);   //Pull up to avoid accidental interrupts
   Serial.begin(38400);
   Wire.begin();
   Wire.setClock(400000);
@@ -123,14 +128,16 @@ bool enable_system() { //Enable or disable system todo: look at sequence (also i
     return true;
   }
 
-  if (!load_factory_data()) {
+  if (model == "AIO438" && !load_factory_data()) { //Only AIO438 has factory data in memory
     return true;
   }
 
   set_outputs(); //Now that hardware is known, outputs can be enabled safely
 
-  digitalWrite(expansion_en, HIGH);   //Enable power to expansion connector
-
+  #ifdef expansion_en
+    digitalWrite(expansion_en, HIGH);   //Enable power to expansion connector
+  #endif
+  
   digitalWrite(amp_1_pdn, HIGH);      //Enable amplifier 1
   digitalWrite(amp_2_pdn, HIGH);      //Enable amplifier 2
   delay(10);
@@ -167,13 +174,13 @@ void disable_system() {
   Serial.println(F("Off"));
   Serial.flush();
   digitalWrite(vreg_sleep, LOW);    //Set buckconverter to sleep
-  PCattachInterrupt(0, exit_powerdown, CHANGE);       //Wake up from serial todo null pointer function?, update lib?
+  PCattachInterrupt(RXD, exit_powerdown, CHANGE);       //Wake up from serial todo null pointer function?, update lib?
   PCattachInterrupt(rot_sw, exit_powerdown, CHANGE);  //Wake up from rotary switch
   wdt_disable();                    //Disable watchdog timer
   LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
   /* System will be in powerdown until interrupt occurs */
   wdt_enable(WDTO_8S);              //Enable 8 seconds watchdog timer
-  PCdetachInterrupt(0);      //Wake up from serial
+  PCdetachInterrupt(RXD);      //Wake up from serial
   PCdetachInterrupt(rot_sw); //Wake up from rotary switch
 }
 
@@ -188,6 +195,22 @@ void set_outputs() { //Remainder of GPIO are default pinmode (INPUT)
   pinMode(bt_pio_22, OUTPUT);
   pinMode(led_green, OUTPUT);
   pinMode(led_red, OUTPUT);
+
+  #ifdef expansion_en
+    pinMode(expansion_en, OUTPUT);
+  #endif
+  #ifdef bt_pio_19
+    pinMode(bt_pio_19, OUTPUT);
+  #endif
+  #ifdef bt_pio_20
+    pinMode(bt_pio_20, OUTPUT);
+  #endif
+  #ifdef bt_pio_21
+    pinMode(bt_pio_21, OUTPUT);
+  #endif
+  #ifdef bt_pio_22
+    pinMode(bt_pio_22, OUTPUT);
+  #endif
 }
 
 void exit_powerdown() {} //Empty ISR to exit powerdown
@@ -199,7 +222,7 @@ void send_pulse(byte PIO, int duration) { //Send a pulse to a BT PIO to 'press' 
   digitalWrite(PIO, LOW);
 }
 
-void set_led(String color) { //Set led color
+void set_led(String color) { //Set led color (enum?)
   if (color == "RED") {
     digitalWrite(led_red, HIGH);
     digitalWrite(led_green, LOW);
