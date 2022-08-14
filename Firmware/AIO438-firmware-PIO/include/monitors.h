@@ -33,3 +33,4 @@ void analog_gain_monitor();
 void tws_monitor();
 void eq_monitor();
 void aux_level_monitor();
+void bt_monitor();

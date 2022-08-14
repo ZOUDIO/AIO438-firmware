@@ -202,3 +202,21 @@ void eq_monitor() { //Check EQ button
 void aux_level_monitor() {
   //Todo: implement, AIO438 only
 }
+
+void bt_monitor() { //Feedback indicates A2DP streaming state (active-low). When it changes, mute for 1.5 seconds to prevent pops
+  #ifdef AIO4CH
+  static bool bt_feedback_var = HIGH, bt_feedback_var_old = HIGH;
+  bt_feedback_var = digitalRead(bt_feedback);
+  if (bt_feedback_var != bt_feedback_var_old) {
+    if (bt_feedback_var == LOW) {
+      Serial.println(F("A2DP stream started"));
+    } else {
+      Serial.println(F("A2DP stream stopped"));
+      write_single_register(amp_dual, 0x03, B1011); //Mute amplifiers
+      delay(1500);
+      write_single_register(amp_dual, 0x03, B0011); //Unmute amplifiers
+    }
+    bt_feedback_var_old = bt_feedback_var;
+  }
+  #endif
+}

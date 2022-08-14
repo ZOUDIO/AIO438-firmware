@@ -111,6 +111,7 @@ void loop() {
       rotary_monitor();
       tws_monitor();
       eq_monitor();
+      bt_monitor();
     }
     wdt_reset(); //System will reset if loop hangs for more than 8 seconds
   }
