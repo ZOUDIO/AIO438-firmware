@@ -71,42 +71,53 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
   }
   set_vol();
 
-  rot_button.Update(); //Implement actions
-  if (rot_button.clicks == 1) {             //Short single press: turn off
-    system_enabled = false;
-  } else if (rot_button.clicks == 2) {      //Short double press: next track
-    Serial.println(F("Next track"));
-    #ifdef AIO4CH
-      send_pulse(bt_pio_0, 600);
-    #endif
-    #ifdef AIO438
-      Serial.println(F("Not implemented yet"));
-    #endif
-  } else if (rot_button.clicks == 3) {      //Short triple press: previous track
-    Serial.println(F("Previous track"));
-    #ifdef AIO4CH
-      send_pulse(bt_pio_0, 100);
-    #endif
-    #ifdef AIO438
-      Serial.println(F("Not implemented yet"));
-    #endif
-  } else if (rot_button.clicks == -1) {     //Long press: enter pairing
-    Serial.println(F("Enter pairing"));
-    #ifdef AIO4CH
-      send_pulse(bt_pio_0, 1100);
-    #endif
-    #ifdef AIO438
-      send_pulse(bt_pio_19, 400);
-    #endif
-  } else if (rot_button.clicks == -2) {     //Double press and hold: reset pairing list
-    Serial.println(F("Reset pairing list"));
-    #ifdef AIO4CH
-      send_pulse(bt_pio_0, 1600);
-    #endif
-    #ifdef AIO438
-      send_pulse(bt_pio_19, 900);
-    #endif
+  rot_button.Update();
+
+  if(rot_button.clicks == 0) {
+    return;
   }
+  #ifdef AIO4CH
+    switch(rot_button.clicks) {
+      case 1: //Short single press: turn off
+        system_enabled = false;
+        break;
+      case 2: //Short double press: next track
+        Serial.println(F("Next track"));
+        send_pulse(bt_pio_0, 600);
+        break;
+      case 3: //Short triple press: previous track 
+        Serial.println(F("Previous track"));
+        send_pulse(bt_pio_0, 100);
+        break;
+      case -1: //Long press: enter pairing
+        Serial.println(F("Enter pairing"));
+        send_pulse(bt_pio_0, 1100);
+        break;
+      case -2: //Double press and hold: reset pairing list
+        Serial.println(F("Reset pairing list"));
+        send_pulse(bt_pio_0, 1600);
+        break;
+    }
+  #endif
+
+  #ifdef AIO438
+    switch(rot_button.clicks) {
+      case 1: //Short single press: turn off
+        system_enabled = false;
+        break;
+      case -1: //Long press: enter pairing
+        Serial.println(F("Enter pairing"));
+        send_pulse(bt_pio_19, 400);
+        break;
+      case -2: //Double press and hold: reset pairing list
+        Serial.println(F("Reset pairing list"));
+        send_pulse(bt_pio_19, 900);
+        break;
+      default:
+        Serial.println(F("Function not implemented yet"));
+        break;
+    }
+  #endif
 }
 
 void power_monitor() { //Check system voltage. Update system state, status LED and analog gain accordingly
