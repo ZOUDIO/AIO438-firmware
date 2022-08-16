@@ -35,6 +35,7 @@ struct system_variables {
   float power_shutdown;
   uint8_t amp_1_output;
   uint8_t amp_2_output;
+  uint8_t default_on; //1 = true, else = false
 };
 
 extern struct system_variables user;
@@ -59,7 +60,7 @@ struct eeprom_layout {
   uint8_t rfu_1[119]; //Pad to 128 bytes
 
   system_variables user;
-  uint8_t rfu_2[107]; //Pad to 128 bytes
+  uint8_t rfu_2[106]; //Pad to 128 bytes
 
   entry_struct first_entry;
   //Remainder of eeprom is reserved for dsp settings

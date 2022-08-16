@@ -90,16 +90,18 @@ void setup() { //Todo: move pinmodes to after eeprom reading?
   rot.begin();
 
   static_assert(sizeof(entry_struct) == 64, "Entry_struct size has changed");
-  static_assert(sizeof(system_variables) == 21, "System_variables size has changed");
+  static_assert(sizeof(system_variables) == 22, "System_variables size has changed");
   static_assert(offsetof(eeprom_layout, user) == 128, "User offset has changed");
   static_assert(offsetof(eeprom_layout, first_entry) == 256, "First_entry offset has changed");
 
   vol = user.vol_start; //Set once
+
+  if(user.default_on != 1) {
+    disable_system();
+  }
 }
 
 void loop() {
-  disable_system();
-  /* System will be in powerdown until interrupt occurs */
   system_enabled = enable_system();
   while (system_enabled) {
     serial_monitor();
@@ -115,6 +117,8 @@ void loop() {
     }
     wdt_reset(); //System will reset if loop hangs for more than 8 seconds
   }
+  disable_system();
+  /* System will be in powerdown until interrupt occurs */
 }
 
 bool enable_system() { //Enable or disable system todo: look at sequence (also i2s)

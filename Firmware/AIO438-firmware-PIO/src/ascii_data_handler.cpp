@@ -50,6 +50,17 @@ void ascii_data_handler() {
     Serial.println(user.bt_enabled ? "true" : "false");
     eeprom_buffer.as_user_data = user;
     write_eeprom(offsetof(eeprom_layout, user) + 2, 1, eeprom_buffer.as_bytes + 2);
+  } else if (!strcmp(command, "DEFAULT_ON")) {
+    command = strtok (NULL, " ");
+    if (!strcmp(command, "ENABLE")) {
+      user.default_on = true;
+    } else if (!strcmp(command, "DISABLE")) {
+      user.default_on = false;
+    }
+    Serial.print(F("Default on: "));
+    Serial.println((user.default_on == 1) ? "true" : "false");
+    eeprom_buffer.as_bytes[0] = user.default_on;
+    write_eeprom(offsetof(eeprom_layout, user.default_on), 1, eeprom_buffer.as_bytes);
   } else {  //If command is not recognized
     Serial.print(F("nAck: "));
     Serial.println(command);
