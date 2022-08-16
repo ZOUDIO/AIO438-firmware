@@ -107,11 +107,11 @@ void rotary_monitor() {  //Check if the rotary encoder has been turned or presse
         break;
       case -1: //Long press: enter pairing
         Serial.println(F("Enter pairing"));
-        send_pulse(bt_pio_19, 400);
+        send_pulse(bt_pio_19, 750);
         break;
       case -2: //Double press and hold: reset pairing list
         Serial.println(F("Reset pairing list"));
-        send_pulse(bt_pio_19, 900);
+        send_pulse(bt_pio_19, 1250);
         break;
       default:
         Serial.println(F("Function not implemented yet"));

@@ -81,6 +81,7 @@ void apply_settings() { //Todo restore old settings complete
     float current_volume = vol;
     load_eeprom();
     vol = current_volume; //Reset old volume 
+    vol_old = -104; //Set out of range to force re-run
     set_vol(); //Todo, improve this
 
     Serial.println(F("New settings applied"));

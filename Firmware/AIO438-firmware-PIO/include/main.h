@@ -56,9 +56,8 @@ extern eeprom_buffer_union eeprom_buffer;
 
 void setup();
 void loop();
-bool enable_system();
+void enable_system();
 void disable_system();
-void set_outputs();
 void exit_powerdown();
 void send_pulse(byte PIO, int duration);
 void set_led(String color);

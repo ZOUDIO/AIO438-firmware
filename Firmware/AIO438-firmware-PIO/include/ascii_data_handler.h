@@ -19,7 +19,6 @@ extern const uint16_t valid_signature;
 extern bool system_enabled;
 extern float vol;
 extern float power_voltage;
-extern bool full_functionality;
 
 extern const char *amp_output_state_str[];
 

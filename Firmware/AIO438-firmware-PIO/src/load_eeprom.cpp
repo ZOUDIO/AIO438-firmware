@@ -4,42 +4,35 @@ const byte cfg_meta_burst = 253;
 const byte cfg_meta_delay = 254;
 
 void load_eeprom() {
-  load_system_variables();
-  
-  if (user.bt_enabled) {
+  if (!load_system_variables()) {
+    user.bt_enabled = true;
+    user.vol_start_enabled = true;
+    user.vol_start = -30;
+    user.vol_max = 0;
+    user.power_low = 0;
+    user.power_shutdown = 0;
+    user.amp_1_output = static_cast<uint8_t>(amp_output_state::dual);
+    user.amp_2_output = static_cast<uint8_t>(amp_output_state::dual);
+    Serial.println(F("Default user data loaded"));
+  }
+
+   if (user.bt_enabled) {
     digitalWrite(bt_enable, HIGH);    //Enable BT module
   } else {
+    digitalWrite(bt_enable, LOW);    //Disable BT module
     Serial.println(F("BT disabled"));
   }
 
-  write_single_register(amp_2, 0x6A, 0b1011);  //Set ramp clock phase of amp_2 to 90 degrees (see 7.4.3.3.1 in datasheet)
-
   uint8_t entry_count = load_dsp_entries(!verbose);
 
-  if(invalid_entry_stored) { //Unknown state
-    return; //Do not continue with setting up the amps
+  if (entry_count > 0) { //If any DSP is loaded
+    set_amp_output_state(1, amp_1_addr, user.amp_1_output);
+    set_amp_output_state(2, amp_2_addr, user.amp_2_output);
+  } else {
+    Serial.println(F("No DSP settings found, amplifier outputs will be disabled"));
+    set_amp_output_state(1, amp_1_addr, static_cast<uint8_t>(amp_output_state::disable));
+    set_amp_output_state(2, amp_2_addr, static_cast<uint8_t>(amp_output_state::disable));
   }
-
-  if (entry_count == 0) { //If there were no entries
-    write_single_register(amp_dual, 0x02, 0b1000001);   //1SPW modulation, BTL output, 768k Fsw
-    write_single_register(amp_dual, 0x53, 0b1100000);   //Set Class D bandwith to 175Khz
-    Serial.println(F("Default DSP settings loaded"));
-  }
-
-  write_single_register(amp_dual, 0x76, 0b10000);     //Enable over-temperature auto recovery
-  write_single_register(amp_dual, 0x77, 0b111);       //Enable Cycle-By-Cycle over-current protection
-
-  if (user.vol_start_enabled) {
-    vol = user.vol_start; //Set vol if enabled
-  }
-  vol_old = -104;         //Set vol_old out of range to force set_vol to run
-  set_vol();              //Set volume
-
-  analog_gain_old = 32;   //Set analog_gain_old out of range to force analog_gain_monitor to run
-  analog_gain_monitor();  //Set analog gain
-
-  set_amp_output_state(1, amp_1_addr, user.amp_1_output);
-  set_amp_output_state(2, amp_2_addr, user.amp_2_output);
 }
 
 void set_amp_output_state(uint8_t amp_index, uint8_t amp_addr, uint8_t output) { //Todo clean up
@@ -77,35 +70,24 @@ bool load_factory_data() {
   return true;
 }
 
-void load_system_variables() { //Start loading user data
+bool load_system_variables() { //Start loading user data
   eeprom_get(user);
   user = eeprom_buffer.as_user_data;
+
+  if (user.signature != valid_signature) {
+    return false;
+  }
 
   user.vol_start = swap_float(user.vol_start);
   user.vol_max = swap_float(user.vol_max);
   user.power_low = swap_float(user.power_low);
   user.power_shutdown = swap_float(user.power_shutdown);
 
-  if (user.signature != valid_signature) {
-    user.bt_enabled = true;
-    user.vol_start_enabled = true;
-    user.vol_start = -30;
-    user.vol_max = 0;
-    user.power_low = 0;
-    user.power_shutdown = 0;
-    user.amp_1_output = static_cast<uint8_t>(amp_output_state::dual);
-    user.amp_2_output = static_cast<uint8_t>(amp_output_state::dual);
-    Serial.println(F("Default system variables loaded"));
-  }
-
   uint8_t output_state_limit = static_cast<uint8_t>(amp_output_state::disable); //Limit range to 3, anything above 3 means disable
   user.amp_1_output = min(user.amp_1_output, output_state_limit);
   user.amp_2_output = min(user.amp_2_output, output_state_limit);
 
-  vol_reduction = 0;
-  
-  eq_state = eq_state_old = digitalRead(eq_sw);     //Enable if EQ switch is closed
-  eq_enabled = eq_enabled_old = digitalRead(eq_sw); //Enable if EQ switch is closed
+  return true;
 }
 
 uint8_t load_dsp_entries(bool _verbose) {
@@ -113,7 +95,6 @@ uint8_t load_dsp_entries(bool _verbose) {
   uint16_t entry_offset = offsetof(eeprom_layout, first_entry);
   uint8_t entry_count = 0;
   bool header_printed = false;
-  invalid_entry_stored = false;
 
   for (int i = 0; i < 32; i++) { //Read until the end of eeprom, unless loop breaks itself earlier
 
@@ -157,7 +138,7 @@ uint8_t load_dsp_entries(bool _verbose) {
       Serial.print(F("Invalid CRC, calculated value = "));
       Serial.print(F("0x"));
       Serial.println(crc_calculated, HEX);
-      invalid_entry_stored = true;
+      entry_count = 0;
       return false;
     }
 

@@ -1,5 +1,4 @@
 #include "ascii_data_handler.h"
-#define SET_FIELD(s,f,v)	offsetof(typeof(s),##f),(s.f = v)
 
 void ascii_data_handler() {
   char *command = strtok (incoming_data._char, " ");  //Commands are space-delimited
@@ -105,8 +104,6 @@ void get_status() { //todo error checking before displaying, check for completen
   Serial.println(model); //Todo retrieve from eeprom
   Serial.print(F("Firmware version = "));
   Serial.println(firmware);
-  Serial.print(F("Full functionality = "));
-  Serial.println(full_functionality ? "true" : "false");
 
   //Todo print only useful data
   if (factory_data.signature == valid_signature) {
@@ -125,6 +122,8 @@ void get_status() { //todo error checking before displaying, check for completen
     Serial.println(user.bt_enabled ? "true" : "false");
     Serial.print(F("Start volume enabled = "));
     Serial.println(user.vol_start_enabled ? "true" : "false");
+    Serial.print(F("Power on by default = "));
+    Serial.println((user.default_on == 1) ? "true" : "false");
 
     Serial.print(F("Start volume (dB) = "));
     Serial.println(user.vol_start);
