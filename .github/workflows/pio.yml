@@ -1,8 +1,11 @@
 name: PlatformIO CI
 
 on:
+  release:
+    types: [published]
   push:
-  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -39,15 +42,12 @@ jobs:
         
     - name: Build Firmware
       run: |
-        cd ./Firmware/AIO438-firmware-PIO
-        pio run -e AIO438 -e AIO4CH
+        pio run -d ./AIO438-firmware -e AIO438 -e AIO4CH
 
     - name: Rename files 
       run: |
-        cd ./Firmware/AIO438-firmware-PIO
-        ls
-        mv ./.pio/build/AIO438/firmware.hex ./AIO438-firmware_v1.2.3.hex
-        mv ./.pio/build/AIO4CH/firmware.hex ./AIO4CH-firmware_v1.2.3.hex
+        mv ./AIO438-firmware/.pio/build/AIO438/firmware.hex ./AIO438-firmware_v1.2.3.hex
+        mv ./AIO438-firmware/.pio/build/AIO4CH/firmware.hex ./AIO4CH-firmware_v1.2.3.hex
         
     - name: Archive artifacts
       uses: actions/upload-artifact@v2
