@@ -1,14 +1,3 @@
-/*
-  ZOUDIO AIO438 firmware
-  For questions mail "info@zoudio.com" or visit "www.zoudio.com"
-
-  Microcontroller: ATMEGA328PB at 3.3V with 8MHz external crystal
-  Bootloader: https://github.com/MCUdude/MiniCore with BOD set to 1.8V
-    Note: V2.0.4 or higher needs a modified upload speed to work
-  Recommended programmer to burn bootloader: USBasp
-  Board has onboard CP2102N for communication and firmware uploads via UART
-*/
-
 /* General todo list
   - use flash strings (use some kind of general definition?)
   - include libs in src/ and use submodules
