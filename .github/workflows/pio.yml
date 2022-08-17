@@ -3,46 +3,65 @@ name: PlatformIO CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   pio-build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache pip
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        path: |
+          ~/.cache/pip
+          ~/.platformio/.cache
+        key: ${{ runner.os }}-pio
+        
     - name: Cache PlatformIO
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.platformio
         key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
+      with:
+          python-version: '3.9'
 
     - name: Install PlatformIO
-      id: pio_install
       run: |
         python -m pip install --upgrade pip
         pip install --upgrade platformio
-    - name: Build Firmware (view)
-      # Run regardless of other build step failures, as long as setup steps completed
-      if: always() && steps.pio_install.outcome == 'success'
+        
+    - name: Build Firmware
       run: |
-        pio run -d ./firmware \
-          -e view \
+        cd ./Firmware/AIO438-firmware-PIO
+        pio run -e AIO438 -e AIO4CH
 
-    - name: Build Firmware (handheld_tdisplay)
-      # Run regardless of other build step failures, as long as setup steps completed
-      if: always() && steps.pio_install.outcome == 'success'
+    - name: Rename files 
       run: |
-        pio run -d ./firmware \
-          -e handheld_tdisplay \
+        cd ./Firmware/AIO438-firmware-PIO
+        ls
+        mv ./.pio/build/AIO438/firmware.hex ./AIO438-firmware_v1.2.3.hex
+        mv ./.pio/build/AIO4CH/firmware.hex ./AIO4CH-firmware_v1.2.3.hex
+        
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        path: |
+          ./AIO438-firmware_v1.2.3.hex
+          ./AIO4CH-firmware_v1.2.3.hex
+        
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: |
+          ./AIO438-firmware_v1.2.3.hex
+          ./AIO4CH-firmware_v1.2.3.hex
