@@ -42,7 +42,7 @@ void set_amp_output_state(uint8_t amp_index, uint8_t amp_addr, uint8_t output) {
   } else if (output == static_cast<uint8_t>(amp_output_state::single)) {
     write_single_register(amp_index, 0x02, current_state | 0b100); //PBTL mode
   } else {
-    write_single_register(amp_1, 0x03, 0); //Force deep sleep
+    write_single_register(amp_index, 0x03, 0); //Force deep sleep
     return;
   }
   write_single_register(amp_index, 0x03, 0b11); //Play mode
