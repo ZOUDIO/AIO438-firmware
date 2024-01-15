@@ -96,7 +96,9 @@ uint8_t load_dsp_entries(bool _verbose) {
   uint8_t entry_count = 0;
   bool header_printed = false;
 
-  for (int i = 0; i < 32; i++) { //Read until the end of eeprom, unless loop breaks itself earlier
+  Serial.println("Only loading the first DSP entry");
+
+  for (int i = 0; i < 1; i++) { //Read until the end of eeprom, unless loop breaks itself earlier
 
     if ((entry_offset + entry_size) > eeprom_size) {
       Serial.println(F("Eeprom size limit reached"));
