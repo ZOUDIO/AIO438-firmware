@@ -44,10 +44,18 @@ jobs:
       run: |
         pio run -d ./AIO438-firmware -e AIO438 -e AIO4CH
 
+    - name: Determine Tag Name
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "TAG_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+        else
+          echo "TAG_NAME=${{ github.event.inputs.tagName }}" >> $GITHUB_ENV
+        fi
+
     - name: Rename files 
       run: |
-        mv ./AIO438-firmware/.pio/build/AIO438/firmware.hex ./AIO438-firmware_v1.2.3.hex
-        mv ./AIO438-firmware/.pio/build/AIO4CH/firmware.hex ./AIO4CH-firmware_v1.2.3.hex
+        mv ./AIO438-firmware/.pio/build/AIO438/firmware.hex ./AIO438-firmware_${{ env.TAG_NAME }}.hex
+        mv ./AIO438-firmware/.pio/build/AIO4CH/firmware.hex ./AIO4CH-firmware_${{ env.TAG_NAME }}.hex
         
     - name: Archive artifacts
       uses: actions/upload-artifact@v2
@@ -63,5 +71,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         files: |
-          ./AIO438-firmware_v1.2.3.hex
-          ./AIO4CH-firmware_v1.2.3.hex
+          ./AIO438-firmware_${{ env.TAG_NAME }}.hex
+          ./AIO4CH-firmware_${{ env.TAG_NAME }}.hex
