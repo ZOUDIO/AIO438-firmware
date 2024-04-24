@@ -21,7 +21,7 @@
   const char* model = "AIO4CH";
 #endif
 
-const char* firmware = "2.2.1"; //Todo handle by flag?
+const char* firmware = "2.2.2"; //Todo handle by flag?
 
 //Can to pass to functions
 const int amp_dual = 0; //Write to both amps, todo: pack in enum, typesafety icm address?
