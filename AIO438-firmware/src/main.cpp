@@ -184,7 +184,7 @@ void enable_system() { //Enable or disable system todo: look at sequence (also i
   analog_gain_monitor();  //Set analog gain
 
   #ifdef AIO438
-    send_pulse(bt_pio_19, 250); //Play startup tone
+    //send_pulse(bt_pio_19, 250); //Play startup tone
     #endif
     #ifdef AIO4CH
     send_pulse(bt_pio_8, 100); //Play startup tone
